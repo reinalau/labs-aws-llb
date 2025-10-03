@@ -1,0 +1,258 @@
+{
+	"info": {
+		"_postman_id": "b6336be5-84c0-45e0-a433-e4efcb426f5a",
+		"name": "APIsMovies-AWS",
+		"description": "Colección de metodos de AWS Apigateway con integración en AWS Lambda y DynamoDB",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "32375182"
+	},
+	"item": [
+		{
+			"name": "createMovie",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"year\": 1973,\r\n  \"title\": \"The Godfather2\",\r\n  \"actors\": [\"Marlon Brando\", \"Al Pacino\", \"James Caan\"]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://z9jw260t62.execute-api.us-east-1.amazonaws.com/dev/Movies",
+					"protocol": "https",
+					"host": [
+						"z9jw260t62",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"dev",
+						"Movies"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "createMovie",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"year\": 1972,\r\n  \"title\": \"The Godfather\",\r\n  \"actors\": [\"Marlon Brando\", \"Al Pacino\", \"James Caan\"]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://z9jw260t62.execute-api.us-east-1.amazonaws.com/dev/Movies",
+							"protocol": "https",
+							"host": [
+								"z9jw260t62",
+								"execute-api",
+								"us-east-1",
+								"amazonaws",
+								"com"
+							],
+							"path": [
+								"dev",
+								"Movies"
+							]
+						}
+					},
+					"_postman_previewlanguage": "",
+					"header": [],
+					"cookie": [
+						{
+							"expires": "Invalid Date",
+							"domain": "",
+							"path": ""
+						}
+					],
+					"body": ""
+				},
+				{
+					"name": "createMovie",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"year\": 1972,\r\n  \"title\": \"Deliverance\",\r\n  \"actors\": [\"Jon Voight\", \"Burt Reynolds\", \"Ned Beatty\"]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://z9jw260t62.execute-api.us-east-1.amazonaws.com/dev/Movies",
+							"protocol": "https",
+							"host": [
+								"z9jw260t62",
+								"execute-api",
+								"us-east-1",
+								"amazonaws",
+								"com"
+							],
+							"path": [
+								"dev",
+								"Movies"
+							]
+						}
+					},
+					"_postman_previewlanguage": "",
+					"header": [],
+					"cookie": [
+						{
+							"expires": "Invalid Date",
+							"domain": "",
+							"path": ""
+						}
+					],
+					"body": ""
+				},
+				{
+					"name": "createMovie",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"year\": 1994,\r\n  \"title\": \"The Shawshank Redemption\",\r\n  \"actors\": [\"Tim Robbins\", \"Morgan Freeman\", \"Bob Gunton\"]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://z9jw260t62.execute-api.us-east-1.amazonaws.com/dev/Movies",
+							"protocol": "https",
+							"host": [
+								"z9jw260t62",
+								"execute-api",
+								"us-east-1",
+								"amazonaws",
+								"com"
+							],
+							"path": [
+								"dev",
+								"Movies"
+							]
+						}
+					},
+					"_postman_previewlanguage": "",
+					"header": [],
+					"cookie": [
+						{
+							"expires": "Invalid Date",
+							"domain": "",
+							"path": ""
+						}
+					],
+					"body": ""
+				}
+			]
+		},
+		{
+			"name": "getMovie",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://z9jw260t62.execute-api.us-east-1.amazonaws.com/dev/Movies/The Shawshank Redemption",
+					"protocol": "https",
+					"host": [
+						"z9jw260t62",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"dev",
+						"Movies",
+						"The Shawshank Redemption"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "updateMovie",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"year\": 1972,\r\n  \"title\": \"The Godfather\",\r\n  \"rating\": \"10\",\r\n  \"plot\": \"The aging patriarch of an organized crime dynasty transfers control of his clandestine empire to his reluctant son.\"\r\n}\r\n\r\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://z9jw260t62.execute-api.us-east-1.amazonaws.com/dev/Movies",
+					"protocol": "https",
+					"host": [
+						"z9jw260t62",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"dev",
+						"Movies"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "delete_movie",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"year\": 1972,\r\n  \"title\": \"The Godfather\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://z9jw260t62.execute-api.us-east-1.amazonaws.com/dev/Movies",
+					"protocol": "https",
+					"host": [
+						"z9jw260t62",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"dev",
+						"Movies"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

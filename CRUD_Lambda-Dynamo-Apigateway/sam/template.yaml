@@ -1,0 +1,318 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Movies API - Serverless Application
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    Description: Environment name
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 30
+    MemorySize: 128
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref MoviesTable
+  Api:
+    Cors:
+      AllowMethods: "'DELETE,GET,OPTIONS,POST,PUT'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+      AllowOrigin: "'*'"
+
+Resources:
+  # Rol compartido (opcional)
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: lambda-movies-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: lambda-dynamodb-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                Resource: !GetAtt MoviesTable.Arn
+  # DynamoDB Table
+  MoviesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: movies
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: title
+          AttributeType: S
+      KeySchema:
+        - AttributeName: title
+          KeyType: HASH
+      Tags:
+        - Key: Name
+          Value: movies-table
+
+  # Lambda Functions
+  CreateMovieFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Role: !GetAtt LambdaExecutionRole.Arn
+      FunctionName: create_movie
+      CodeUri: ../src/
+      Handler: lambda_function_create.lambda_handler
+            
+  GetMovieFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Role: !GetAtt LambdaExecutionRole.Arn
+      FunctionName: get_movie
+      CodeUri: ../src/
+      Handler: lambda_function_get.lambda_handler
+            
+  UpdateMovieFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Role: !GetAtt LambdaExecutionRole.Arn
+      FunctionName: update_movie
+      CodeUri: ../src/
+      Handler: lambda_function_update.lambda_handler
+            
+  DeleteMovieFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Role: !GetAtt LambdaExecutionRole.Arn
+      FunctionName: delete_movie
+      CodeUri: ../src/
+      Handler: lambda_function_delete.lambda_handler
+            
+  # API Gateway
+  MoviesApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: Movies API
+      StageName: !Ref Environment
+      Description: Movies API that connects a web endpoint to several Lambda functions
+      DefinitionBody:
+        openapi: 3.0.1
+        info:
+          title: Movies API
+          version: '1.0'
+        paths:
+          /Movies:
+            post:
+              responses:
+                '200':
+                  description: Success response
+                  content:
+                    application/json:
+                     schema:
+                      type: object
+              x-amazon-apigateway-integration:
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateMovieFunction.Arn}/invocations"
+                httpMethod: POST
+                type: aws
+                passthroughBehavior: when_no_match
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseTemplates:
+                      application/json: ""
+                            
+            put:
+              responses:
+                '200':
+                  description: Success response
+                  content:
+                    application/json:
+                     schema:
+                      type: object
+              x-amazon-apigateway-integration:
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateMovieFunction.Arn}/invocations"
+                httpMethod: POST
+                type: aws
+                passthroughBehavior: when_no_match
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseTemplates:
+                      application/json: ""
+                    
+            delete:
+              responses:
+                '200':
+                  description: Success response
+                  content:
+                    application/json:
+                     schema:
+                      type: object
+              x-amazon-apigateway-integration:
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteMovieFunction.Arn}/invocations"
+                httpMethod: POST
+                type: aws
+                passthroughBehavior: when_no_match
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseTemplates:
+                      application/json: ""
+                  
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: '{"statusCode": 200}'
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                      method.response.header.Access-Control-Allow-Methods: "'DELETE,GET,OPTIONS,POST,PUT'"
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Headers:
+                      schema:
+                        type: string
+                    Access-Control-Allow-Methods:
+                      schema:
+                        type: string
+                    Access-Control-Allow-Origin:
+                      schema:
+                        type: string
+          /Movies/{title}:
+            get:
+              parameters:
+                - name: title
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+              responses:
+                '200':
+                  description: Success response
+                  content:
+                    application/json:
+                     schema:
+                      type: object
+              x-amazon-apigateway-integration:
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetMovieFunction.Arn}/invocations"
+                httpMethod: POST
+                type: aws
+                passthroughBehavior: when_no_match
+                requestTemplates:
+                  application/json: |
+                    {
+                      "title": "$input.params('title')"
+                    }
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseTemplates:
+                      application/json: ""
+                    
+            options:
+              parameters:
+                - name: title
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: '{"statusCode": 200}'
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                      method.response.header.Access-Control-Allow-Methods: "'DELETE,GET,OPTIONS,POST,PUT'"
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Headers:
+                      schema:
+                        type: string
+                    Access-Control-Allow-Methods:
+                      schema:
+                        type: string
+                    Access-Control-Allow-Origin:
+                      schema:
+                        type: string
+
+  # Lambda Permissions
+  CreateMoviePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CreateMovieFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MoviesApi}/*/*"
+
+  GetMoviePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetMovieFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MoviesApi}/*/*"
+
+  UpdateMoviePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref UpdateMovieFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MoviesApi}/*/*"
+
+  DeleteMoviePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DeleteMovieFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MoviesApi}/*/*"
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${MoviesApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiUrl"
+
+  MoviesTableName:
+    Description: DynamoDB table name
+    Value: !Ref MoviesTable
+    Export:
+      Name: !Sub "${AWS::StackName}-TableName"
+
+  CreateMovieFunctionArn:
+    Description: Create Movie Lambda Function ARN
+    Value: !GetAtt CreateMovieFunction.Arn
+
+  GetMovieFunctionArn:
+    Description: Get Movie Lambda Function ARN
+    Value: !GetAtt GetMovieFunction.Arn
+
+  UpdateMovieFunctionArn:
+    Description: Update Movie Lambda Function ARN
+    Value: !GetAtt UpdateMovieFunction.Arn
+
+  DeleteMovieFunctionArn:
+    Description: Delete Movie Lambda Function ARN
+    Value: !GetAtt DeleteMovieFunction.Arn

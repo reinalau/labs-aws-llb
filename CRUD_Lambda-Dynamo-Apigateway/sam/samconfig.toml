@@ -1,0 +1,30 @@
+version = 0.1
+
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "crud-movies-llb"
+resolve_s3 = true
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM"
+parameter_overrides = "Environment=\"dev\""
+image_repositories = []
+
+[default.build]
+[default.build.parameters]
+parallel = true
+cached = true
+
+[default.validate]
+[default.validate.parameters]
+lint = true
+
+[default.local]
+[default.local.start-api]
+[default.local.start-api.parameters]
+warm_containers = "EAGER"
+
+[default.local.invoke]
+[default.local.invoke.parameters]
+event = "events/event.json"
