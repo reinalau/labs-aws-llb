@@ -6,7 +6,7 @@ El objetivo es explorar las pequeñas arquitecturas estables y robustas que nos 
 
 ## Proyectos
 
-- [CRUD con Lambda + DynamoDB + API Gateway](https://github.com/reinalau/aws-crud-lambda-dynamo)
+- [CRUD con Lambda + DynamoDB + API Gateway](https://github.com/reinalau/labs-aws-llb/tree/main/CRUD_Lambda-Dynamo-Apigateway)
 
 
 ## 🧹 Limpieza de ambiente aws
