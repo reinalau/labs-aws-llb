@@ -135,7 +135,7 @@ python3 app.py
 
 La aplicación estará disponible en `http://localhost:5000`
 
-## 🐳 Deployment con Docker
+## 🐳 Deployment con Docker de forma Local
 
 ### Construir la imagen
 
@@ -156,10 +156,10 @@ docker run -d \
   aws-reference-app
 ```
 
-## 🚀 Deployment en AWS
+## 🚀 Deployment en AWS (incluido docker)
 
 ### Opción CloudFormation
-Ver directorio ./cloudFormation
+Ver directorio ./cloudformation
 Para ejecutar paso a paso la implementación, leer readme.md en el correspondiente directorio.
 
 ### Opción Terraform
