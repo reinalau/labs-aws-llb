@@ -101,8 +101,8 @@ Landing page responsive que muestra:
 ### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/your-username/aws-reference-architecture.git
-cd aws-reference-architecture/application
+git clone https://github.com/reinalau/labs-aws-llb.git
+cd HA_ALB-AS-EC2-RDS/application
 ```
 
 ### 2. Instalar dependencias
@@ -117,14 +117,6 @@ pip3 install -r requirements.txt
 cp .env.example .env
 # Editar .env con las credenciales de tu RDS
 nano .env
-```
-
-### 4. Inicializar la base de datos
-
-```sql
--- Conectarse a RDS y ejecutar:
-CREATE DATABASE aws_demo;
-USE aws_demo;
 ```
 
 ### 5. Ejecutar la aplicación
@@ -211,12 +203,6 @@ curl http://localhost:5000/api/health
 
 ```bash
 curl http://localhost:5000/api/db-status
-```
-
-### Test Query
-
-```bash
-curl http://localhost:5000/api/test-query
 ```
 
 ## 🛠️ Troubleshooting
