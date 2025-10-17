@@ -1,4 +1,6 @@
-## Laboratorioas AWS con Iac
+![AWS](https://img.shields.io/badge/AWS-232F3E?style=flat&logo=amazonaws&logoColor=white)
+
+## Laboratorios AWS con Iac
 
 Este es un repo donde se van compartiendo diferentes casos de uso de aws con su correspondiente Infraestructura como codigo (IAC). 
 El objetivo es explorar las pequeñas arquitecturas estables, robustas y resilientes que nos ofrece AWS, comprendiendo como es el proceso de deployment.
