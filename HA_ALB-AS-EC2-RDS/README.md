@@ -46,7 +46,8 @@ HA_ALB-AS-EC2-RDS/
 ├── README.md                    # Este archivo
 ├── recursos/
 │   ├── ELB-AS-RDS.png          # Diagrama de arquitectura
-│   └── cloudformation.PNG      # Diagrama de CloudFormation
+│   ├── ELB-AS-RDS.drawio       # Archivo fuente del diagrama (Draw.io)
+│   └── cloudformation.png      # Diagrama de CloudFormation
 ├── terraform/                   # Implementación con Terraform
 │   ├── main.tf                 # Configuración principal y AMI
 │   ├── vpc.tf                  # VPC, subnets, routing y security groups
