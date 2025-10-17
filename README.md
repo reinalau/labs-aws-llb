@@ -1,12 +1,13 @@
 ## Laboratorioas AWS con Iac
 
 Este es un repo donde se van compartiendo diferentes casos de uso de aws con su correspondiente Infraestructura como codigo (IAC). 
-El objetivo es explorar las pequeñas arquitecturas estables y robustas que nos ofrece AWS y entender como es el proceso de deployment.
+El objetivo es explorar las pequeñas arquitecturas estables, robustas y resilientes que nos ofrece AWS, comprendiendo como es el proceso de deployment.
 
+## Proyectos - Laboratorios
 
-## Proyectos
+- [CRUD con Lambda + DynamoDB + API Gateway](https://github.com/reinalau/labs-aws-llb/tree/main/CRUD_Lambda-Dynamo-Apigateway)
 
-- [CRUD con Lambda + DynamoDB + API Gateway](https://github.com/reinalau/aws-crud-lambda-dynamo)
+- [Arquitectura Alta Disponibilidad con ALB + Auto Scaling + EC2 + RDS (CloudFormation + Terraform)](https://github.com/reinalau/labs-aws-llb/tree/main/HA_ALB-AS-EC2-RDS)
 
 
 ## 🧹 Limpieza de ambiente aws

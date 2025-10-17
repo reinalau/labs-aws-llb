@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Master template para nested stacks con Docker desde S3'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: 'aws-ha-webapp'
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+  DBUsername:
+    Type: String
+    Default: 'admin'
+  DBPassword:
+    Type: String
+    NoEcho: true
+  S3Bucket:
+    Type: String
+    Description: 'Bucket S3 donde esta la imagen Docker'
+  DockerImageName:
+    Type: String
+    Description: 'Nombre del archivo tar.gz en S3'
+  TemplatesBucket:
+    Type: String
+    Description: 'Bucket S3 donde estan los templates'
+
+Resources:
+  # VPC y Networking
+  VPCStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${TemplatesBucket}.s3.${AWS::Region}.amazonaws.com/vpc.yaml'
+      Parameters:
+        ProjectName: !Ref ProjectName
+
+  # Base de datos RDS (primero)
+  DatabaseStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: VPCStack
+    Properties:
+      TemplateURL: !Sub 'https://${TemplatesBucket}.s3.${AWS::Region}.amazonaws.com/database.yaml'
+      Parameters:
+        ProjectName: !Ref ProjectName
+        VPCId: !GetAtt VPCStack.Outputs.VPCId
+        PrivateSubnet1: !GetAtt VPCStack.Outputs.PrivateSubnet1
+        PrivateSubnet2: !GetAtt VPCStack.Outputs.PrivateSubnet2
+        DBUsername: !Ref DBUsername
+        DBPassword: !Ref DBPassword
+
+  # Compute con Docker (después con endpoint real)
+  ComputeStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: DatabaseStack
+    Properties:
+      TemplateURL: !Sub 'https://${TemplatesBucket}.s3.${AWS::Region}.amazonaws.com/compute-docker.yaml'
+      Parameters:
+        ProjectName: !Ref ProjectName
+        VPCId: !GetAtt VPCStack.Outputs.VPCId
+        PublicSubnet1: !GetAtt VPCStack.Outputs.PublicSubnet1
+        PublicSubnet2: !GetAtt VPCStack.Outputs.PublicSubnet2
+        PrivateSubnet1: !GetAtt VPCStack.Outputs.PrivateSubnet1
+        PrivateSubnet2: !GetAtt VPCStack.Outputs.PrivateSubnet2
+        KeyPairName: !Ref KeyPairName
+        DBEndpoint: !GetAtt DatabaseStack.Outputs.DBEndpoint
+        DBUsername: !Ref DBUsername
+        DBPassword: !Ref DBPassword
+        S3Bucket: !Ref S3Bucket
+        DockerImageName: !Ref DockerImageName
+
+Outputs:
+  ApplicationURL:
+    Description: 'URL de la aplicacion web'
+    Value: !Sub 'http://${ComputeStack.Outputs.LoadBalancerDNS}'
+  
+  DatabaseEndpoint:
+    Description: 'Endpoint de la base de datos RDS'
+    Value: !GetAtt DatabaseStack.Outputs.DBEndpoint
