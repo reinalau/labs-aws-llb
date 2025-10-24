@@ -6,7 +6,7 @@ Esta es una arquitectura de referencia que implementa las mejores prácticas de 
 
 ## 🏗️ Arquitectura
 
-![Arquitectura Alta Disponibilidad Tradicional](recursos/ELB-AS-RDS.png)
+![Arquitectura Alta Disponibilidad Tradicional](recursos/elb-as-rds.png)
 
 La aplicación está distribuida en dos zonas de disponibilidad (AZs) e implementa los siguientes componentes:
 
