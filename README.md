@@ -11,9 +11,11 @@ El objetivo es explorar las pequeñas arquitecturas estables, robustas y resilie
 
 - [Arquitectura Alta Disponibilidad con ALB + Auto Scaling + EC2 + RDS (CloudFormation + Terraform)](https://github.com/reinalau/labs-aws-llb/tree/main/HA_ALB-AS-EC2-RDS)
 
+- [Arquitectura Alta Disponibilidad con ALB + ECS Fargate + RDS (CloudFormation + Terraform)](https://github.com/reinalau/labs-aws-llb/tree/main/HA_ALB-FARGATE-RDS)
 
-## 🧹 Limpieza de ambiente aws
-Recordar que todos los laboratorios pueden llegar a tener un costo minimo en la consola. Para evitar sorpresas seguir las indicaciones de delete/destroy o eliminación manual de recursos via la consola de aws.
+
+## 🧹 Limpieza de ambiente AWS
+Recordar que todos los laboratorios pueden llegar a tener un costo minimo en la consola. La idea es analizar la IAC--> impactar -->analzar la infra en aws e inmediatamente destruir. Para evitar sorpresas seguir las indicaciones de delete/destroy o eliminación manual de recursos via la consola de aws.
 
 
 ## 📄 Licencia

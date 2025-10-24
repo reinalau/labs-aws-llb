@@ -1,40 +1,35 @@
 # Terraform configuration files with sensitive data
-**/terraform.tfvars
-**/terraform.tfvars.backup
-**/*.tfvars
+*/terraform.tfvars
+*/terraform.tfvars.backup
+*/*.tfvars
 
 # Terraform state files (contienen información sensible)
-**/terraform.tfstate
-**/terraform.tfstate.*
-**/.terraform.tfstate.lock.info
+*/terraform.tfstate
+*/terraform.tfstate.*
+*/.terraform.tfstate.lock.info
 
 # Terraform directories
-**/.terraform/
-**/.terraform.lock.hcl
+*/.terraform/
+*/.terraform.lock.hcl
 
 # Environment files
-*/.env
-*/.env.local
-*/.env.development
-*/.env.test
-*/.env.production
+.env
+.env.local
+.env.development
+.env.test
+.env.production
 
 # ============================================================================
 # ARCHIVOS DE BUILD Y DESPLIEGUE
 # ============================================================================
 
 # Lambda deployment package
-**/src/*.zip
-
-**/application/*.zip
+*/src/*.zip
 
 
 # Ignorar node_modules en cualquier parte
-**/node_modules/
+*/node_modules/
 
 # Ignorar archivos de SAM
-**/.aws-sam/
+*/.aws-sam/
 
-# Ignorar por carpeta específica
-CRUD_Lambda-Dynamo-Apigateway/dist/
-HA_ALB-AS-EC2-RDS/dist/
