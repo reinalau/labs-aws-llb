@@ -78,11 +78,11 @@ chmod +x deploy-cf-docker.sh
 
 Mientras se van desplegando los servicios podes ingresar a la consola de AWs-->CLoduformation y visualizar como progresa el despliegue. Ten en cuenta que puede tardar varios minutos.
 
-![Progreso Cloudformation](recursos/cloudformation.png)
+![Progreso Cloudformation](../recursos/cloudformation.png)
 
 ## 🏗️ Arquitectura Desplegada
 
-![Arquitectura Alta Disponibilidad Tradicional](recursos/ELB-AS-RDS.png)
+![Arquitectura Alta Disponibilidad Tradicional](../recursos/ELB-AS-RDS.png)
 
 ### Componentes Principales
 
