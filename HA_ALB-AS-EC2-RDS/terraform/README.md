@@ -44,7 +44,7 @@ terraform/
 - **RDS MySQL** Multi-AZ en subnets privadas
 - **NAT Gateway** para acceso a internet desde subnets privadas
 
-![Arquitectura Alta Disponibilidad Tradicional](../recursos/ELB-AS-RDS.png)
+![Arquitectura Alta Disponibilidad Tradicional](../recursos/elb-as-rds.png)
 
 
 ## Deployment

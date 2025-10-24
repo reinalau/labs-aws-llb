@@ -82,7 +82,7 @@ Mientras se van desplegando los servicios podes ingresar a la consola de AWs-->C
 
 ## 🏗️ Arquitectura Desplegada
 
-![Arquitectura Alta Disponibilidad Tradicional](../recursos/ELB-AS-RDS.png)
+![Arquitectura Alta Disponibilidad Tradicional](../recursos/elb-as-rds.png)
 
 ### Componentes Principales
 
