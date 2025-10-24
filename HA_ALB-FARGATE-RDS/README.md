@@ -153,7 +153,7 @@ docker run -d \
 ```
 
 Accede a: `http://localhost:5000`
-```
+
 
 ## 🚀 DEPLOYMENT EN AWS (incluido docker)
 
