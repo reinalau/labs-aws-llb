@@ -149,7 +149,7 @@ docker run -d \
   aws-reference-app
 ```
 
-## 🚀 Deployment en AWS (incluido docker)
+## 🚀 DEPLOYMENT EN AWS (incluido docker)
 
 ### Opción CloudFormation
 Ver directorio ./cloudformation

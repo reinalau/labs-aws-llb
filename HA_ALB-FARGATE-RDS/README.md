@@ -155,27 +155,15 @@ docker run -d \
 Accede a: `http://localhost:5000`
 ```
 
-## 🚀 Deployment en AWS con ECS Fargate
+## 🚀 DEPLOYMENT EN AWS (incluido docker)
 
-### Opción 1: CloudFormation (Nested Stacks + ECR)
+### Opción CloudFormation
+ir a directorio ./cloudformation
+Para ejecutar paso a paso la implementación, leer readme.md en el correspondiente directorio.
 
-```bash
-cd cloudformation
-./deploy-cf-docker.sh mi-stack MySecurePassword123!
-```
-
-Ver [cloudformation/README.md](cloudformation/README.md) para instrucciones detalladas.
-
-### Opción 2: Terraform (Modular + ECR)
-
-```bash
-cd terraform
-./ecr-push.sh aws-ha-webapp us-east-1
-terraform init
-terraform apply
-```
-
-Ver [terraform/README.md](terraform/README.md) para instrucciones detalladas.
+### Opción Terraform
+ir a directorio ./terraform
+Para ejecutar paso a paso la implementación, leer readme.md en el correspondiente directorio.
 
 ## 🔐 Configuración de Seguridad
 
