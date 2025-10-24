@@ -76,7 +76,7 @@ chmod +x deploy-cf-docker.sh
 
 Mientras se despliegan los servicios, ingresa a la consola de AWS → CloudFormation y visualiza el progreso. El deployment puede tardar 10-15 minutos.
 
-![Progreso Cloudformation](../recursos/cloudformation-fargate.png)
+![Progreso Cloudformation](../recursos/cloudformation.PNG)
 
 ## 🏗️ Arquitectura Desplegada
 
