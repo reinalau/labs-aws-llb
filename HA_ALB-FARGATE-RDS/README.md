@@ -6,7 +6,7 @@ Esta es una arquitectura de referencia serverless que implementa las mejores pr�
 
 ## 🏗️ Arquitectura Serverless
 
-![Arquitectura ECS Fargate Alta Disponibilidad](recursos/ELB-ECSFARGATE-RDS.png)
+![Arquitectura ECS Fargate Alta Disponibilidad](recursos/elb-ecsfargate-rds.png)
 
 La aplicación está distribuida en dos zonas de disponibilidad (AZs) e implementa los siguientes componentes:
 
@@ -49,8 +49,9 @@ Scale In Cooldown: 300 segundos
 HA_ALB-FARGATE-RDS/
 ├── README.md                    # Este archivo
 ├── recursos/
-│   ├── ELB-ECSFARGATE-RDS.png  # Diagrama de arquitectura Fargate
-│   └── ELB-ECSFARGATE-RDS.drawio # Archivo fuente del diagrama (Draw.io)
+│   ├── elb-ecsfargate-rds.png  # Diagrama de arquitectura Fargate
+│   ├── elb-ecsfargate-rds.drawio # Archivo fuente del diagrama (Draw.io)
+│   └── cloudformation-fargate.png # Diagrama CloudFormation
 ├── terraform/                   # Implementación con Terraform
 │   ├── main.tf                 # Configuración principal y provider AWS
 │   ├── vpc.tf                  # VPC, subnets, 2 NAT Gateways, security groups

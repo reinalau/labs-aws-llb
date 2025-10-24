@@ -43,7 +43,7 @@ terraform/
 - **2 NAT Gateways** (uno por AZ) para alta disponibilidad
 - **Amazon ECR** para almacenar imágenes Docker
 
-![Arquitectura ECS Fargate Alta Disponibilidad](https://github.com/reinalau/labs-aws-llb/blob/main/HA_ALB-FARGATE-RDS/recursos/ELB-ECSFARGATE-RDS.png)
+![Arquitectura ECS Fargate Alta Disponibilidad](./recursos/ELB-ECSFARGATE-RDS.png)
 
 > **📝 Nota sobre HTTPS:** Esta arquitectura usa HTTP (puerto 80). Para HTTPS necesitas un dominio propio y certificado SSL/TLS de AWS Certificate Manager (ACM) - Gratis.
 

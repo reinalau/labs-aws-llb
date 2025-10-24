@@ -76,11 +76,11 @@ chmod +x deploy-cf-docker.sh
 
 Mientras se despliegan los servicios, ingresa a la consola de AWS → CloudFormation y visualiza el progreso. El deployment puede tardar 10-15 minutos.
 
-![Progreso Cloudformation](https://github.com/reinalau/labs-aws-llb/blob/main/HA_ALB-FARGATE-RDS/recursos/Cloudformation_fargate.png)
+![Progreso Cloudformation](../recursos/cloudformation-fargate.png)
 
 ## 🏗️ Arquitectura Desplegada
 
-![Arquitectura ECS Fargate Alta Disponibilidad](https://github.com/reinalau/labs-aws-llb/blob/main/HA_ALB-FARGATE-RDS/recursos/ELB-ECSFARGATE-RDS.png)
+![Arquitectura ECS Fargate Alta Disponibilidad](../recursos/elb-ecsfargate-rds.png)
 
 ### Componentes Principales
 
