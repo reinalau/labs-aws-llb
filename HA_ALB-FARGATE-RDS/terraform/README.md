@@ -64,6 +64,11 @@ chmod +x ecr-push.sh
 - `aws-ha-webapp` → Nombre del proyecto
 - `us-east-1` → Región de AWS (opcional, usa AWS_DEFAULT_REGION si no se especifica)
 
+Luego de la ejecución anterior, podemos verificar en la consola de aws que se ha creado el repositorio:
+
+![Imagen Docker en Amazon ECR](../recursos/ecrImagenDocker.png)
+
+
 ### 2. **Clonar variables**:
 ```bash
 cp terraform.tfvars.example terraform.tfvars
@@ -120,7 +125,7 @@ terraform destroy
 
 **⚠️ Importante**: `terraform destroy` elimina VPC, ECS, RDS, ALB y NAT Gateways, pero **NO elimina el repositorio ECR** porque fue creado manualmente por el script.
 
-### 2. **Eliminar repositorio ECR manualmente** (Requerido):
+### 2. **ELIMINAR REPOSITORIO ECR MANUALMENTE** (REQUERDO!!):
 
 El repositorio ECR debe eliminarse manualmente porque no fue creado por Terraform:
 

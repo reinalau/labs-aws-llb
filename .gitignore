@@ -38,3 +38,6 @@
 # Ignorar por carpeta específica
 CRUD_Lambda-Dynamo-Apigateway/dist/
 HA_ALB-AS-EC2-RDS/dist/
+
+# Ignorar proyectos borradores
+borrador*/
