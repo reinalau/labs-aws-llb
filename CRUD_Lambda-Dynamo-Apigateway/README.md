@@ -114,3 +114,7 @@ Los logs se almacenan automáticamente en CloudWatch:
 ## Colección Postman para testing
 Reemplazar url por la salida del deployment por el "API Gateway endpoint URL" 
 tutorial-recursos/APIsMovies-AWS.postman_collection.json
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](/LICENSE) para más detalles.

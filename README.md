@@ -22,4 +22,4 @@ Para evitar sorpresas seguir las indicaciones de delete/destroy o eliminación m
 
 ## 📄 Licencia
 
-Este proyecto está bajo la licencia MIT. Ver archivo `LICENSE` para más detalles.
+Este proyecto está bajo la licencia MIT. Ver archivo [LICENSE](LICENSE) para más detalles.

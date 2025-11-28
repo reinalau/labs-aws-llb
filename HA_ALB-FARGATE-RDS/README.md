@@ -261,15 +261,6 @@ Es normal durante los primeros 60 segundos (grace period). Si persiste:
 - Verificar conectividad a RDS
 
 
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
-
-## 👥 Autores
-
-- LauB - [@reinalau](https://github.com/reinalau)
-
-
 ## 💰 Estimación de Costos (us-east-1)
 
 | Recurso | Tipo | Cantidad | Costo/mes (aprox) |
@@ -283,5 +274,13 @@ Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) par
 | **Total** | | | **~$153/mes** |
 
 *Usar [AWS Calculator](https://calculator.aws) para estimaciones precisas.*
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](/LICENSE) para más detalles.
+
+## 👥 Autores
+
+- LauB - [@reinalau](https://github.com/reinalau)
 
 **⚠️ Nota Importante:** Este es un proyecto educativo para aprender a deployar arquitectura serverless de alta disponibilidad con ECS Fargate en AWS. Revisar y ajustar lo necesario si estás pensando en utilizarlo a nivel productivo.
