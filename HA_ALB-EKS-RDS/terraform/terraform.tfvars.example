@@ -1,0 +1,5 @@
+project_name      = "aws-eks-webapp"
+region            = "us-east-1"
+db_username       = "admin"
+db_password       = "MySecurePassword123!"
+db_instance_class = "db.t3.micro"

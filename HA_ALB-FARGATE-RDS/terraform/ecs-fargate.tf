@@ -3,10 +3,10 @@ data "aws_ecr_repository" "main" {
   name = "${var.project_name}-repo"
 }
 
-# ECS Cluster
+# ECS Cluster. Opcionalmenre Se puede habilitar container insights 
 resource "aws_ecs_cluster" "main" {
   name = "${var.project_name}-cluster"
-
+ 
   tags = {
     Name = "${var.project_name}-cluster"
   }
@@ -176,7 +176,7 @@ resource "aws_appautoscaling_target" "ecs" {
   service_namespace  = "ecs"
 }
 
-# Auto Scaling Policy
+# Auto Scaling Policy CPU
 resource "aws_appautoscaling_policy" "ecs_cpu" {
   name               = "${var.project_name}-cpu-autoscaling"
   policy_type        = "TargetTrackingScaling"
@@ -193,3 +193,5 @@ resource "aws_appautoscaling_policy" "ecs_cpu" {
     scale_out_cooldown = 60
   }
 }
+
+# se puede agregar: Auto Scaling Policy x Memoria

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: aws-eks-webapp-service
+  namespace: default
+spec:
+  selector:
+    app: aws-eks-webapp
+  ports:
+  - protocol: TCP
+    port: 5000
+    targetPort: 5000
+  type: ClusterIP

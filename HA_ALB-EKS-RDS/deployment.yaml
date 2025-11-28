@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aws-eks-webapp
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: aws-eks-webapp
+  template:
+    metadata:
+      labels:
+        app: aws-eks-webapp
+    spec:
+      containers:
+      - name: webapp
+        image: ${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/aws-eks-webapp-repo:latest
+        ports:
+        - containerPort: 5000
+        env:
+        - name: DB_HOST
+          value: "${RDS_ENDPOINT}"
+        - name: DB_USER
+          value: "admin"
+        - name: DB_PASSWORD
+          value: "${DB_PASSWORD}"
+        - name: DB_NAME
+          value: "awsekswebappdatabase"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "0.25"
+          limits:
+            memory: "512Mi"
+            cpu: "0.5"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 5
