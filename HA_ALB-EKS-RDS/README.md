@@ -40,6 +40,10 @@ choco install kubernetes-cli
 terraform -version
 kubectl version --client
 ```
+## Manifiesto Kubernetes
+-deployment.yaml
+-hpa.yaml
+-service.yaml
 
 ## 🔧 Componentes de la WebAPP
 
