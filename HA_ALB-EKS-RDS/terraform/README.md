@@ -363,7 +363,7 @@ cat deployment.yaml | \
 kubectl get pods -o wide
 ```
 
--Ejecutar uno a uno las instrucciones.
+-Ejecutar las instruccion una a una.
 ```bash
 cd terraform
 
