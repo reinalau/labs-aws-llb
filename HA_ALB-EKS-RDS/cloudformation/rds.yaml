@@ -1,0 +1,99 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'RDS MySQL Multi-AZ'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: eks-fargate-lab
+    Description: Nombre del proyecto
+  
+  VPCStackName:
+    Type: String
+    Default: vpc-stack
+    Description: Nombre del stack de VPC
+  
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.micro
+    Description: Clase de instancia RDS
+    AllowedValues:
+      - db.t3.micro
+      - db.t3.small
+      - db.t3.medium
+  
+  DBUsername:
+    Type: String
+    Default: admin
+    Description: Usuario de la base de datos
+    NoEcho: false
+  
+  DBPassword:
+    Type: String
+    Default: TuPasswordSeguro123
+    Description: Password de la base de datos
+    NoEcho: true
+    MinLength: 8
+
+Resources:
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupName: !Sub '${ProjectName}-db-subnet-group'
+      DBSubnetGroupDescription: Subnet group para RDS
+      SubnetIds:
+        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet1Id'
+        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2Id'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-db-subnet-group'
+
+  DBInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Delete
+    Properties:
+      DBInstanceIdentifier: !Sub '${ProjectName}-database'
+      Engine: mysql
+      EngineVersion: '8.4.3'
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: 20
+      MaxAllocatedStorage: 100
+      StorageType: gp3
+      StorageEncrypted: false
+      DBName: !Sub
+        - '${Name}database'
+        - Name: !Join ['', !Split ['-', !Ref ProjectName]]
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      VPCSecurityGroups:
+        - Fn::ImportValue: !Sub '${VPCStackName}-RDSSecurityGroupId'
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      BackupRetentionPeriod: 0
+      PreferredBackupWindow: '03:00-04:00'
+      PreferredMaintenanceWindow: 'sun:04:00-sun:05:00'
+      MultiAZ: true
+      PubliclyAccessible: false
+      DeletionProtection: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-database'
+
+Outputs:
+  DBInstanceEndpoint:
+    Description: Endpoint de la base de datos
+    Value: !GetAtt DBInstance.Endpoint.Address
+    Export:
+      Name: !Sub '${AWS::StackName}-DBEndpoint'
+
+  DBInstancePort:
+    Description: Puerto de la base de datos
+    Value: !GetAtt DBInstance.Endpoint.Port
+    Export:
+      Name: !Sub '${AWS::StackName}-DBPort'
+
+  DBName:
+    Description: Nombre de la base de datos
+    Value: !Sub
+      - '${Name}database'
+      - Name: !Join ['', !Split ['-', !Ref ProjectName]]
+    Export:
+      Name: !Sub '${AWS::StackName}-DBName'

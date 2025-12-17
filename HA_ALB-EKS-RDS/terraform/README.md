@@ -26,19 +26,38 @@ kubectl version --client
 ## 📁 Estructura del Directorio
 
 ```
-terraform/
-├── main.tf                  # Configuración principal y provider AWS
-├── variables.tf             # Variables de entrada del proyecto
-├── vpc.tf                   # VPC, subnets, routing, 2 NAT Gateways y security groups
-├── alb.tf                   # Application Load Balancer y target group (IP type)
-├── eks-fargate.tf           # EKS Cluster, Fargate Profile, IAM roles y security groups
-├── rds.tf                   # RDS MySQL Multi-AZ con security group
-├── outputs.tf               # Outputs de la infraestructura (URLs, EKS cluster)
-├── terraform.tfvars.example # Ejemplo de variables de configuración
-└── README.md                # Este archivo
+HA_ALB-EKS-RDS/
+├── terraform/                  # Templates de Terraform
+│   ├── main.tf                 # Configuración principal y provider AWS
+│   ├── variables.tf            # Variables de entrada del proyecto
+│   ├── vpc.tf                  # VPC, subnets, routing, 2 NAT Gateways y security groups
+│   ├── alb.tf                  # Application Load Balancer y target group (IP type)
+│   ├── eks-fargate.tf          # EKS Cluster, Fargate Profile, IAM roles y security groups
+│   ├── rds.tf                  # RDS MySQL Multi-AZ con security group
+│   ├── outputs.tf              # Outputs de la infraestructura (URLs, EKS cluster)
+│   ├── terraform.tfvars.example # Ejemplo de variables de configuración
+│   └── README.md               # Este archivo
+├── app/                       # Código de la aplicación
+│   ├── app.py                 # Backend Flask
+│   ├── Dockerfile             # Imagen Docker
+│   ├── requirements.txt       # Dependencias Python
+│   └── frontend/
+│       └── index.html         # Frontend de la webapp
+├── deployment.yaml            # Deployment de Kubernetes (usado en paso 4)
+├── service.yaml               # Service de Kubernetes (usado en paso 4)
+├── hpa.yaml                   # HorizontalPodAutoscaler (usado en paso 4)
+└── README.md                  # Documentación principal del proyecto
 ```
 
-## Arquitectura Serverless
+**Archivos externos usados en el despliegue:**
+- `../deployment.yaml` - Manifest de Kubernetes para el deployment de la aplicación (paso 4)
+- `../service.yaml` - Manifest de Kubernetes para el servicio ClusterIP (paso 4)
+- `../hpa.yaml` - Manifest de Kubernetes para auto-scaling horizontal (paso 4)
+- `../app/` - Código fuente de la aplicación Flask y Dockerfile
+
+**Nota:** A diferencia de CloudFormation, Terraform NO usa `ingress.yaml` ni scripts de instalación. El ALB y Target Group se crean directamente con Terraform en `alb.tf`, y los pods se registran manualmente en el Target Group.
+
+## 🏗️ Arquitectura
 
 - **VPC** con subnets públicas y privadas en 2 AZs
 - **Application Load Balancer** en subnets públicas
@@ -62,7 +81,7 @@ Total	        ~$1.40	                    Arquitectura completa HA
 *Precios aproximados. Usar [AWS Calculator](https://calculator.aws) para estimaciones precisas.*
 
 
-## Deployment
+## 🚀 DEPLOYMENT
 
 **Importante!!**
 Posicionarse en la terminal en el directorio terraform: "..\labs-aws-llb\HA_ALB-EKS-RDS\terraform"

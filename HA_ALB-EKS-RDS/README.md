@@ -23,24 +23,18 @@ La aplicación está distribuida en dos zonas de disponibilidad (AZs) e implemen
 > **📝 Nota sobre HTTPS:** Esta arquitectura usa HTTP (puerto 80). Para HTTPS necesitas un dominio propio y certificado SSL/TLS de AWS Certificate Manager (ACM) - Gratis.
 
 
-## 📋 Prerrequisitos
+## 📋 Prerrequisitos Generales
 
 1. **Cuenta de AWS y AWS CLI configurado**
 2. **Terraform instalado (>= 1.0)**
-3. **kubectl instalado** (para gestionar el cluster Kubernetes)
-Hay varias maneras de instalar, una es:
-- Usando `chocolatey` en Windows:
-```bash
-choco install kubernetes-cli
-```
+3. **kubectl, eksctl instalado** (segun se necesite explicado en cada forma de deployment)
 4. **Docker Desktop** (para build y push de imagen a ECR)
-
 5. **Verificar versiones instaladas**:
 ```bash
 terraform -version
 kubectl version --client
 ```
-## Manifiesto Kubernetes
+## Manifiesto Kubernetes generales 
 -deployment.yaml
 -hpa.yaml
 -service.yaml
@@ -129,11 +123,11 @@ Accede a: `http://localhost:5000`
 
 ### Opción Terraform
 ir a directorio ./terraform
-Para ejecutar paso a paso la implementación, leer readme.md en el correspondiente directorio.
+Para ejecutar paso a paso la implementación, leer README.md en el correspondiente directorio.
 
-### Opción CloudFormation ...Proximamente!!!
+### Opción CloudFormation 
 ir a directorio ./cloudformation
-Para ejecutar paso a paso la implementación, leer readme.md en el correspondiente directorio.
+Para ejecutar paso a paso la implementación, leer README.md en el correspondiente directorio.
 
 
 ## 🔐 Configuración de Seguridad
@@ -203,4 +197,4 @@ Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](/LICENSE) pa
 - LauB - [@reinalau](https://github.com/reinalau)
 
 
-**⚠️ Nota Importante:** Este es un proyecto educativo para aprender a deployar arquitectura serverless de alta disponibilidad con EKS Fargate en AWS. Revisar y ajustar lo necesario si estás pensando en utilizarlo a nivel productivo.
+**⚠️ Nota Importante:** Este es un proyecto educativo para aprender a deployar arquitecturas serverless de alta disponibilidad con EKS Fargate en AWS. Revisar y ajustar lo necesario si estás pensando en utilizarlo a nivel productivo.

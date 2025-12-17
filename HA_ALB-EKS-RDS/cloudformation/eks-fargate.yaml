@@ -1,0 +1,153 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'EKS Cluster con Fargate Profile'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: eks-fargate-lab
+    Description: Nombre del proyecto
+  
+  VPCStackName:
+    Type: String
+    Default: vpc-stack
+    Description: Nombre del stack de VPC
+
+Resources:
+  EKSClusterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-eks-cluster-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: eks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+
+  FargateProfileRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-fargate-profile-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: eks-fargate-pods.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy
+
+  EKSClusterLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/eks/${ProjectName}-cluster/cluster'
+      RetentionInDays: 1
+
+  EKSCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: !Sub '${ProjectName}-cluster'
+      Version: '1.31'
+      RoleArn: !GetAtt EKSClusterRole.Arn
+      ResourcesVpcConfig:
+        SubnetIds:
+          - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet1Id'
+          - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2Id'
+        EndpointPrivateAccess: true
+        EndpointPublicAccess: true
+      Logging:
+        ClusterLogging:
+          EnabledTypes:
+            - Type: api
+            - Type: audit
+            - Type: authenticator
+            - Type: controllerManager
+            - Type: scheduler
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-cluster'
+
+  FargateProfile:
+    Type: AWS::EKS::FargateProfile
+    Properties:
+      ClusterName: !Ref EKSCluster
+      FargateProfileName: !Sub 'fargate-${ProjectName}'
+      PodExecutionRoleArn: !GetAtt FargateProfileRole.Arn
+      Subnets:
+        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet1Id'
+        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2Id'
+      Selectors:
+        - Namespace: default
+        - Namespace: kube-system
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-fargate-profile'
+
+  EKSClusterSecurityGroupIngressFromALB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt EKSCluster.ClusterSecurityGroupId
+      IpProtocol: tcp
+      FromPort: 5000
+      ToPort: 5000
+      SourceSecurityGroupId:
+        Fn::ImportValue: !Sub '${VPCStackName}-ALBSecurityGroupId'
+
+  RDSSecurityGroupIngressFromEKS:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId:
+        Fn::ImportValue: !Sub '${VPCStackName}-RDSSecurityGroupId'
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      SourceSecurityGroupId: !GetAtt EKSCluster.ClusterSecurityGroupId
+
+  RDSSecurityGroupIngressFromPrivateSubnets:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId:
+        Fn::ImportValue: !Sub '${VPCStackName}-RDSSecurityGroupId'
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      CidrIp: 10.0.1.0/24
+
+  RDSSecurityGroupIngressFromPrivateSubnets2:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId:
+        Fn::ImportValue: !Sub '${VPCStackName}-RDSSecurityGroupId'
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      CidrIp: 10.0.3.0/24
+
+Outputs:
+  EKSClusterName:
+    Description: Nombre del cluster EKS
+    Value: !Ref EKSCluster
+    Export:
+      Name: !Sub '${AWS::StackName}-ClusterName'
+
+  EKSClusterArn:
+    Description: ARN del cluster EKS
+    Value: !GetAtt EKSCluster.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-ClusterArn'
+
+  EKSClusterEndpoint:
+    Description: Endpoint del cluster EKS
+    Value: !GetAtt EKSCluster.Endpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-ClusterEndpoint'
+
+  EKSClusterSecurityGroupId:
+    Description: Security Group del cluster EKS
+    Value: !GetAtt EKSCluster.ClusterSecurityGroupId
+    Export:
+      Name: !Sub '${AWS::StackName}-ClusterSecurityGroupId'
