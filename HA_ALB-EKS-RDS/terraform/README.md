@@ -257,7 +257,7 @@ Accede a la URL en tu navegador. Deberías ver la aplicación funcionando.
 
 ❗**NOTA IMPORTANTE:** Si eliminas y recreas los pods, las IPs cambiarán y deberás desregistrar las IPs viejas y registrar las nuevas en el target group (ver Troubleshooting - 6.)
 
-## LIMPIEZA !!
+## 🧹 LIMPIEZA !!
 
 ### 1. **Eliminar aplicación de Kubernetes** (posicionarse en el directorio ../HA_ALB-EKS-RDS):
 ```bash

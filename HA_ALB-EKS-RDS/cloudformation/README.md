@@ -192,7 +192,7 @@ aws cloudformation describe-stacks \
   --output text
 ```
 
--->Estas 2 salidas si queres podes copiarlas a un notepad para tenerlas a mano.
+-->Estas 2 salidas si queres podes copiarlas en un notepad para tenerlas a mano.
 -->Podemos revisar los servicios creados en la Consola de AWS:
 - Aurora and RDS  > Databases > Ver la base de datos creada-
 - Amazon Elastic Kubernetes Service > Clusters > Ver Cluster creado
@@ -308,16 +308,20 @@ kubectl get ingress aws-eks-webapp-ingress
 kubectl get ingress -w
 ```
 
-Acceder a la URL mostrada en la columna `ADDRESS` y se deberia mostrar la web desplegada. Tener en cuenta que se despliega con http.
+Acceder a la URL mostrada en la columna `ADDRESS` y se deberia mostrar la web desplegada. Tener en cuenta que se despliega con http. Tarda unos minutos en quedar operativa.
 Opcional: Con este comando rapido podemos ver si hubo algun error en los logs -->
 kubectl get events --sort-by='.lastTimestamp' | grep ingress
 
 
-## 🗑️ Eliminación de recursos
+## 🧹 LIMPIEZA !!
 
 **IMPORTANTE**: Eliminar en orden inverso al despliegue para evitar recursos huérfanos.
+Recordar que estamos en el directorio cloudformation
 
-Opcional: Una manera controlada de eliminar y que comprendamos lo que estamos haciendo, es copiar comando por comando e ir ejecutandolos. Los comandos estan ejecutados y validados con *Git Bash*
+- Opcional: Una manera controlada de eliminar y que comprendamos lo que estamos haciendo, es copiar comando por comando e ir ejecutandolos. Los comandos estan ejecutados y validados con *Git Bash*
+
+- El stack de Cloudformation: eksctl-eks-fargate-lab-cluster-addon-iamserviceaccount-kube-system-aws-load-balancer-controller
+tiene proteccion contra eliminacion. Corroborar que se haya eliminado en la consola de aws en el punto 5.
 
 ```bash
 # 1. Eliminar recursos de Kubernetes (esto elimina el ALB automáticamente)
@@ -341,39 +345,45 @@ aws ecr delete-repository \
     --region us-east-1 \
     --force 2>/dev/null || true
 
-# 3. Eliminar CloudWatch Log Groups
-LOG_GROUP_NAME="/aws/eks/eks-fargate-lab-cluster/cluster"
+# 3. Eliminar RDS
+aws cloudformation delete-stack --stack-name rds-stack
+echo "Esperando eliminación de RDS..."
+aws cloudformation wait stack-delete-complete --stack-name rds-stack
 
-MSYS_NO_PATHCONV=1 aws logs delete-log-group \
-    --log-group-name "$LOG_GROUP_NAME" \
+# 4. Eliminar IAM ServiceAccount con eksctl (elimina ServiceAccount, Rol IAM y Stack)
+eksctl delete iamserviceaccount \
+    --cluster=eks-fargate-lab-cluster \
+    --namespace=kube-system \
+    --name=aws-load-balancer-controller \
     --region us-east-1
 
+# Esperar a que el ALB se elimine completamente
+echo "Esperando eliminación deliamserviceaccount..."
+sleep 80
 
-# 3.5. Eliminar política IAM del Load Balancer Controller agregando en install-alb-controller.sh
+# 5. Eliminar política IAM del Load Balancer Controller agregando en install-alb-controller.sh
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 POLICY_ARN="arn:aws:iam::${ACCOUNT_ID}:policy/AWSLoadBalancerControllerIAMPolicy"
 
 aws iam delete-policy --policy-arn $POLICY_ARN 2>/dev/null || echo "Política IAM ya eliminada"
 
-# 4. Eliminar RDS
-aws cloudformation delete-stack --stack-name rds-stack
-echo "Esperando eliminación de RDS..."
-aws cloudformation wait stack-delete-complete --stack-name rds-stack
-
-# 5. Eliminar EKS (puede tardar varios minutos)
+# 6. Eliminar EKS (puede tardar varios minutos)
 aws cloudformation delete-stack --stack-name eks-stack
 echo "Esperando eliminación de EKS..."
 aws cloudformation wait stack-delete-complete --stack-name eks-stack
 
-# 6. Eliminar stack de IAM ServiceAccount (creado por eksctl - DESPUÉS de EKS)
-aws cloudformation delete-stack \
-    --stack-name eksctl-eks-fargate-lab-cluster-addon-iamserviceaccount-kube-system-aws-load-balancer-controller \
-    2>/dev/null || echo "Stack de IAM ServiceAccount ya eliminado"
+# 6.5
+# Eliminar el OIDC provider que contiene el tag indicado
+export MSYS_NO_PATHCONV=1
+CLUSTER_NAME="eks-fargate-lab-cluster"
 
-echo "Esperando eliminación de IAM ServiceAccount..."
-aws cloudformation wait stack-delete-complete \
-    --stack-name eksctl-eks-fargate-lab-cluster-addon-iamserviceaccount-kube-system-aws-load-balancer-controller \
-    2>/dev/null || true
+for arn in $(aws iam list-open-id-connect-providers --query 'OpenIDConnectProviderList[*].Arn' --output text); do
+  if aws iam list-open-id-connect-provider-tags --open-id-connect-provider-arn "$arn" --query "Tags[?Key=='alpha.eksctl.io/cluster-name' && Value=='$CLUSTER_NAME']" --output text 2>/dev/null | grep -q .; then
+    echo "Eliminando: $arn"
+    aws iam delete-open-id-connect-provider --open-id-connect-provider-arn "$arn"
+    break
+  fi
+done
 
 # 7. Verificar y eliminar ENIs huérfanas (si existen)
 VPC_ID=$(aws cloudformation describe-stacks \
@@ -394,6 +404,13 @@ fi
 aws cloudformation delete-stack --stack-name vpc-stack
 echo "Esperando eliminación de VPC..."
 aws cloudformation wait stack-delete-complete --stack-name vpc-stack
+
+# 9. Eliminar CloudWatch Log Groups
+LOG_GROUP_NAME="/aws/eks/eks-fargate-lab-cluster/cluster"
+
+MSYS_NO_PATHCONV=1 aws logs delete-log-group \
+    --log-group-name "$LOG_GROUP_NAME" \
+    --region us-east-1
 
 echo "✅ Todos los recursos eliminados exitosamente!"
 ```
