@@ -39,7 +39,8 @@ serverless-aws-datalake-1/
 *Nota: Los costos pueden variar según la región y uso. ELIMINAR RECURSOS UNA VEZ CULMINADAS LAS PRUEBAS TAL CUAL SE INDICA EN LA SECCION lIMPIEZA!!.*
 
 
-## Infraestructura y flujo de automatizacion del DataLake
+## 🏗 Infraestructura y flujo de automatizacion del DataLake
+
 ![](resources/AWS-Datalake1.png)
 
 **Requisitos para la automatización (paso a paso en Deploy proxima sección)**
@@ -163,41 +164,39 @@ aws s3 rm s3://latam-data-lake-glue-scripts-$(aws sts get-caller-identity --quer
 aws s3api delete-bucket --bucket latam-data-lake-glue-scripts-$(aws sts get-caller-identity --query Account --output text)
 ```
 
-## Utilidades de Logs y otros
+## 📚 Utilidades de Logs y otros
 
-1. EventBridge (flujo de eventos)
-
-# Ver reglas activas
+1. EventBridge (flujo de eventos) 
+--> Ver reglas activas
 aws events list-rules --name-prefix latam-data-lake
 
-# Ver invocaciones (después de subir el archivo)
+--> Ver invocaciones (después de subir el archivo)
 aws events describe-rule --name latam-data-lake-s3-upload-to-raw-dev
 
 2. Lambda Logs (CloudWatch)
-
-# Raw Crawler Lambda
+--> Raw Crawler Lambda
 aws logs tail /aws/lambda/latam-data-lake-trigger-raw-crawler-dev --follow
 
-# Glue Job Lambda
+--> Glue Job Lambda
 aws logs tail /aws/lambda/latam-data-lake-trigger-glue-job-dev --follow
 
-# Curated Crawler Lambda
+--> Curated Crawler Lambda
 aws logs tail /aws/lambda/latam-data-lake-trigger-curated-crawler-dev --follow
 
 3. Glue Crawlers
 
-# Ver estado del raw crawler
+--> Ver estado del raw crawler
 aws glue get-crawler --name latam-data-lake-raw-crawler-dev
 
-# Ver última ejecución
+--> Ver última ejecución
 aws glue get-crawler-metrics --crawler-name-list latam-data-lake-raw-crawler-dev
 
 4. Glue Job (ETL)
 
-# Ver ejecuciones del job
+--> Ver ejecuciones del job
 aws glue get-job-runs --job-name latam-data-lake-raw-to-curated-job-dev --max-results 5
 
-# Logs del job en CloudWatch
+-->Logs del job en CloudWatch
 aws logs tail /aws-glue/jobs/output --follow
 
 5. Visualmente en AWS Console
