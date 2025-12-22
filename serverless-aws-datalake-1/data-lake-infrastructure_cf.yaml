@@ -1,0 +1,528 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Minimal data lake infrastructure for dev environment with automated
+  ETL workflow
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: latam-data-lake
+    Description: Project name for resource naming
+
+  GlueScriptsBucketName:
+    Type: String
+    Description: Name of the S3 bucket containing Glue scripts (must exist before
+      deployment)
+
+Resources:
+  # ==================== S3 Buckets ====================
+  RawDataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${ProjectName}-raw-dev-${AWS::AccountId}
+      NotificationConfiguration:
+        EventBridgeConfiguration:
+          EventBridgeEnabled: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: env
+          Value: dev
+        - Key: team
+          Value: data
+        - Key: project
+          Value: latam-data-lake
+
+  CuratedDataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${ProjectName}-curated-dev-${AWS::AccountId}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: env
+          Value: dev
+        - Key: team
+          Value: data
+        - Key: project
+          Value: latam-data-lake
+
+  # ==================== Glue Database ====================
+  DataLakeDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: !Sub ${ProjectName}_dev_catalog
+        Description: Data catalog for LATAM data lake dev environment
+
+  # ==================== IAM Roles ====================
+  GlueCrawlerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${ProjectName}-glue-crawler-role-dev
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: glue.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:PutObject
+                Resource:
+                  - !GetAtt RawDataBucket.Arn
+                  - !Sub ${RawDataBucket.Arn}/*
+                  - !GetAtt CuratedDataBucket.Arn
+                  - !Sub ${CuratedDataBucket.Arn}/*
+      Tags:
+        - Key: env
+          Value: dev
+        - Key: team
+          Value: data
+        - Key: project
+          Value: latam-data-lake
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${ProjectName}-lambda-execution-role-dev
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: GlueCrawlerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - glue:StartCrawler
+                  - glue:GetCrawler
+                  - glue:GetCrawlerMetrics
+                Resource:
+                  - !Sub arn:aws:glue:${AWS::Region}:${AWS::AccountId}:crawler/${ProjectName}-raw-crawler-dev
+                  - !Sub arn:aws:glue:${AWS::Region}:${AWS::AccountId}:crawler/${ProjectName}-curated-crawler-dev
+              - Effect: Allow
+                Action:
+                  - glue:StartJobRun
+                  - glue:GetJobRun
+                Resource:
+                  - !Sub arn:aws:glue:${AWS::Region}:${AWS::AccountId}:job/${ProjectName}-raw-to-curated-job-dev
+      Tags:
+        - Key: env
+          Value: dev
+        - Key: team
+          Value: data
+        - Key: project
+          Value: latam-data-lake
+
+  # IAM Role para Glue Job
+  GlueJobRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${ProjectName}-glue-job-role-dev
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: glue.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt RawDataBucket.Arn
+                  - !Sub ${RawDataBucket.Arn}/*
+                  - !GetAtt CuratedDataBucket.Arn
+                  - !Sub ${CuratedDataBucket.Arn}/*
+                  - !Sub arn:aws:s3:::${GlueScriptsBucketName}
+                  - !Sub arn:aws:s3:::${GlueScriptsBucketName}/*
+
+  # ==================== Glue Crawlers ====================
+  RawDataCrawler:
+    Type: AWS::Glue::Crawler
+    Properties:
+      Name: !Sub ${ProjectName}-raw-crawler-dev
+      Role: !GetAtt GlueCrawlerRole.Arn
+      DatabaseName: !Ref DataLakeDatabase
+      Targets:
+        S3Targets:
+          - Path: !Sub s3://${RawDataBucket}/
+      SchemaChangePolicy:
+        UpdateBehavior: UPDATE_IN_DATABASE
+        DeleteBehavior: LOG
+      Tags:
+        env: dev
+        team: data
+        project: latam-data-lake
+
+  CuratedDataCrawler:
+    Type: AWS::Glue::Crawler
+    Properties:
+      Name: !Sub ${ProjectName}-curated-crawler-dev
+      Role: !GetAtt GlueCrawlerRole.Arn
+      DatabaseName: !Ref DataLakeDatabase
+      Targets:
+        S3Targets:
+          - Path: !Sub s3://${CuratedDataBucket}/
+      SchemaChangePolicy:
+        UpdateBehavior: UPDATE_IN_DATABASE
+        DeleteBehavior: LOG
+      Tags:
+        env: dev
+        team: data
+        project: latam-data-lake
+
+  # ====================  Glue ETL Job ==================== 
+  RawToCuratedJob:
+    Type: AWS::Glue::Job
+    Properties:
+      Name: !Sub ${ProjectName}-raw-to-curated-job-dev
+      Role: !GetAtt GlueJobRole.Arn
+      Command:
+        Name: glueetl
+        ScriptLocation: !Sub s3://${GlueScriptsBucketName}/scripts/raw_to_curated.py
+        PythonVersion: '3'
+      DefaultArguments:
+        '--job-language': python
+        '--TempDir': !Sub s3://${GlueScriptsBucketName}/temp/
+        '--enable-spark-ui': 'true'
+        '--spark-event-logs-path': !Sub s3://${GlueScriptsBucketName}/spark-logs/
+        '--enable-job-insights': 'true'
+        '--enable-glue-datacatalog': 'true'
+        '--DATABASE_NAME': !Ref DataLakeDatabase
+        '--RAW_BUCKET': !Ref RawDataBucket
+        '--CURATED_BUCKET': !Ref CuratedDataBucket
+      GlueVersion: '4.0'
+      MaxRetries: 1
+      Timeout: 60
+      NumberOfWorkers: 2
+      WorkerType: G.1X
+
+  # ==================== Lambda Functions ====================
+  TriggerRawCrawlerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${ProjectName}-trigger-raw-crawler-dev
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 60
+      Environment:
+        Variables:
+          CRAWLER_NAME: !Ref RawDataCrawler
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+          import os
+
+          glue = boto3.client('glue')
+
+          def lambda_handler(event, context):
+              crawler_name = os.environ['CRAWLER_NAME']
+
+              print(f"Evento recibido: {json.dumps(event)}")
+
+              try:
+                  # Verificar estado del crawler
+                  response = glue.get_crawler(Name=crawler_name)
+                  state = response['Crawler']['State']
+
+                  if state == 'RUNNING':
+                      print(f"Crawler {crawler_name} ya está corriendo")
+                      return {
+                          'statusCode': 200,
+                          'body': json.dumps('Crawler already running')
+                      }
+
+                  # Iniciar crawler
+                  glue.start_crawler(Name=crawler_name)
+                  print(f"Crawler {crawler_name} iniciado exitosamente")
+
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps('Raw crawler started successfully')
+                  }
+
+              except glue.exceptions.CrawlerRunningException:
+                  print(f"Crawler {crawler_name} ya está corriendo (excepción)")
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps('Crawler already running')
+                  }
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  raise e
+      Tags:
+        - Key: env
+          Value: dev
+        - Key: team
+          Value: data
+        - Key: project
+          Value: latam-data-lake
+
+  TriggerCuratedCrawlerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${ProjectName}-trigger-curated-crawler-dev
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 60
+      Environment:
+        Variables:
+          CRAWLER_NAME: !Ref CuratedDataCrawler
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+          import os
+
+          glue = boto3.client('glue')
+
+          def lambda_handler(event, context):
+              crawler_name = os.environ['CRAWLER_NAME']
+
+              print(f"Evento recibido: {json.dumps(event)}")
+
+              try:
+                  # Verificar estado del crawler
+                  response = glue.get_crawler(Name=crawler_name)
+                  state = response['Crawler']['State']
+
+                  if state == 'RUNNING':
+                      print(f"Crawler {crawler_name} ya está corriendo")
+                      return {
+                          'statusCode': 200,
+                          'body': json.dumps('Crawler already running')
+                      }
+
+                  # Iniciar crawler
+                  glue.start_crawler(Name=crawler_name)
+                  print(f"Crawler {crawler_name} iniciado exitosamente")
+
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps('Curated crawler started successfully')
+                  }
+
+              except glue.exceptions.CrawlerRunningException:
+                  print(f"Crawler {crawler_name} ya está corriendo (excepción)")
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps('Crawler already running')
+                  }
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  raise e
+      Tags:
+        - Key: env
+          Value: dev
+        - Key: team
+          Value: data
+        - Key: project
+          Value: latam-data-lake
+
+  TriggerGlueJobFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${ProjectName}-trigger-glue-job-dev
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 60
+      Environment:
+        Variables:
+          JOB_NAME: !Ref RawToCuratedJob
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+          import os
+
+          glue = boto3.client('glue')
+
+          def lambda_handler(event, context):
+              job_name = os.environ['JOB_NAME']
+
+              print(f"Iniciando Glue Job: {job_name}")
+
+              try:
+                  response = glue.start_job_run(JobName=job_name)
+                  job_run_id = response['JobRunId']
+
+                  print(f"Job iniciado con ID: {job_run_id}")
+
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'message': 'Glue job started',
+                          'jobRunId': job_run_id
+                      })
+                  }
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  raise e
+
+  # ==================== EventBridge Rules ====================
+  S3UploadToRawRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub ${ProjectName}-s3-upload-to-raw-dev
+      Description: Trigger raw crawler when file uploaded to raw bucket
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - Object Created
+        detail:
+          bucket:
+            name:
+              - !Ref RawDataBucket
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt TriggerRawCrawlerFunction.Arn
+          Id: TriggerRawCrawlerTarget
+
+  RawCrawlerCompletedRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub ${ProjectName}-raw-crawler-completed-dev
+      Description: Trigger Glue Job when raw crawler completes
+      EventPattern:
+        source:
+          - aws.glue
+        detail-type:
+          - Glue Crawler State Change
+        detail:
+          crawlerName:
+            - !Ref RawDataCrawler
+          state:
+            - Succeeded
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt TriggerGlueJobFunction.Arn
+          Id: TriggerGlueJobTarget
+
+  GlueJobCompletedRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub ${ProjectName}-glue-job-completed-dev
+      Description: Trigger curated crawler when Glue job completes
+      EventPattern:
+        source:
+          - aws.glue
+        detail-type:
+          - Glue Job State Change
+        detail:
+          jobName:
+            - !Ref RawToCuratedJob
+          state:
+            - SUCCEEDED #prestar atencion para este caso es con mayuscula y es case sensitive!
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt TriggerCuratedCrawlerFunction.Arn
+          Id: TriggerCuratedCrawlerTarget
+
+  # ==================== Lambda Permissions ====================
+  PermissionForEventsToInvokeRawLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref TriggerRawCrawlerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt S3UploadToRawRule.Arn
+
+  PermissionForEventsToInvokeCuratedLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref TriggerCuratedCrawlerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt GlueJobCompletedRule.Arn
+
+  PermissionForEventsToInvokeGlueJobLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref TriggerGlueJobFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt RawCrawlerCompletedRule.Arn
+
+Outputs:
+  RawBucketName:
+    Description: Raw data S3 bucket name
+    Value: !Ref RawDataBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-RawBucket
+
+  CuratedBucketName:
+    Description: Curated data S3 bucket name
+    Value: !Ref CuratedDataBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-CuratedBucket
+
+  GlueDatabaseName:
+    Description: Glue database name
+    Value: !Ref DataLakeDatabase
+    Export:
+      Name: !Sub ${AWS::StackName}-GlueDatabase
+
+  CrawlerRoleArn:
+    Description: Glue crawler IAM role ARN
+    Value: !GetAtt GlueCrawlerRole.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-CrawlerRole
+
+  RawCrawlerName:
+    Description: Raw data crawler name
+    Value: !Ref RawDataCrawler
+    Export:
+      Name: !Sub ${AWS::StackName}-RawCrawler
+
+  CuratedCrawlerName:
+    Description: Curated data crawler name
+    Value: !Ref CuratedDataCrawler
+    Export:
+      Name: !Sub ${AWS::StackName}-CuratedCrawler

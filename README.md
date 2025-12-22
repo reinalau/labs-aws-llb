@@ -15,6 +15,9 @@ El objetivo es explorar las pequeñas arquitecturas estables, robustas y resilie
 
 - [Arquitectura Alta Disponibilidad con ALB + EKS Fargate + RDS (CloudFormation(Nuevo!!) + Terraform)](https://github.com/reinalau/labs-aws-llb/tree/main/HA_ALB-EKS-RDS)
 
+- [DataLake Glue-S3](https://github.com/reinalau/labs-aws-llb/tree/main/serverless-aws-datalake-1)
+
+
 ## 🧹 Limpieza de ambiente AWS
 Recordar que todos los laboratorios pueden llegar a tener un costo minimo en la consola. La idea es analizar la IAC--> impactar --> analzar la infraestructura creada en aws e inmediatamente despues de testear: destruir. 
 Para evitar sorpresas seguir las indicaciones de delete/destroy o eliminación manual de recursos via la consola de aws.
