@@ -42,21 +42,21 @@ serverless-aws-datalake-1/
 ## Infraestructura y flujo de automatizacion del DataLake
 ![](resources/AWS-Datalake1.png)
 
-Requisitos para la automatización (paso a paso en Deploy proxima sección)
+**Requisitos para la automatización (paso a paso en Deploy proxima sección)**
 1. Crear Bucket de S3 para scripts de Glue Job (S3 Glue Scripts)
 2. Cargar el script de src/glue_jobs/raw_to_curated.py
 3. Deploy de CloudFormation (data-lake-infrastructure_new.yaml)
 4. Cargar datos de prueba en Raw Data (data/sample/sales.csv)
 
-Flujo autimatica via EnventBridge(EB):
+**Flujo automatico via EnventBridge(EB):**
 5. Se ejecuta la regla de EB que invoca una lambda y esta ultima ejecuta el ***Crawler de Glue***: latam-data-lake-trigger-raw-crawler-dev.
-    -El crawler crea y puebla la tabla con el esquema del csv (latam_data_lake_raw_dev_[idcuenta]) 
+    -El crawler crea y puebla la tabla con el esquema del csv (latam_data_lake_raw_dev_[idcuenta]). 
 6. Si su estado es ***Succeded***, se ejecuta la regla de EB que invoca una lambda y esta ultima ejecuta el ***Glue Job*** : latam-data-lake-raw-to-curated-job-dev.
     -LLena el bucket de ***Curated Data*** con archivos parquet.
 7. Si su estado es ***Succeded***, se ejecuta la regla de EB que invoca una lambda y esta ultima ejecuta el ***Crawler de Glue***: latam-data-lake-trigger-cuarted-crawler-dev.
-    -El crawler crea y puebla la tabla con los datos extraidos de los archivos parquet curados (latam_data_lake_curated_dev_[idcuenta])
+    -El crawler crea y puebla la tabla con los datos extraidos de los archivos parquet curados (latam_data_lake_curated_dev_[idcuenta]).
 
-Consulta de datos en Consola de AWS:
+**Consulta de datos en Consola de AWS:**
 9. Via Amazon Athena, eligiendo la Base de datos latam-data-lake_dev_catalog y la tabla latam_data_lake_curated_dev_[idcuenta] --> Amazon Athena > Query editor
 
 SELECT * FROM llatam_data_lake_curated_dev_[idcuenta];
@@ -65,17 +65,17 @@ SELECT * FROM llatam_data_lake_curated_dev_[idcuenta];
 ## DEPLOY en AWS via CloudFormation
 Antes de comenzar con los pasos, leer/revisar lo que vamos a ejecutar y enteneder el .yaml de cloudformation.
 
-# 1. Crear el bucket donde se subira el script del glue job
+### 1. Crear el bucket donde se subira el script del glue job
 ```bash
 aws s3 mb s3://latam-data-lake-glue-scripts-$(aws sts get-caller-identity --query Account --output text)
 ```
 
-# 2. Subir el script
+### 2. Subir el script
 ```bash
 aws s3 cp src/glue_jobs/raw_to_curated.py s3://latam-data-lake-glue-scripts-$(aws sts get-caller-identity --query Account --output text)/scripts/
 ```
 
-# 3. Deploy de CloudFormation completo
+### 3. Deploy de CloudFormation completo
 
 ```bash
 SCRIPTS_BUCKET=$(aws s3api list-buckets --query "Buckets[?starts_with(Name, 'latam-data-lake-glue-scripts-')].Name" --output text)
@@ -87,7 +87,7 @@ aws cloudformation deploy \
   --capabilities CAPABILITY_NAMED_IAM
 ```
 
-# 4. Subir los datos de Prueba sales.csv a Raw Data
+### 4. Subir los datos de Prueba sales.csv a Raw Data
 Subiendo este archivo comienza el flujo automatico via rules de EventBridge.
 
 ```bash
