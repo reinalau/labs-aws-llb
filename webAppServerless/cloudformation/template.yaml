@@ -1,0 +1,802 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  WebApp Serverless - Mariposas Bonaerenses Nativas.
+  Stack completo de 3 capas: S3 + CloudFront (Web Tier),
+  Cognito + API Gateway + Lambda (App Tier),
+  DynamoDB + S3 imagenes (Data Tier).
+
+# ===========================================================
+# PARAMETROS
+# ===========================================================
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Entorno de despliegue
+
+  PresignedUrlTtl:
+    Type: Number
+    Default: 300
+    Description: TTL en segundos de la Presigned URL para subida de imagenes
+
+  LambdaMemoryMB:
+    Type: Number
+    Default: 256
+    Description: Memoria en MB asignada a cada funcion Lambda
+
+  LambdaTimeout:
+    Type: Number
+    Default: 29
+    Description: Timeout en segundos de cada funcion Lambda
+
+# ===========================================================
+# CONDICIONES
+# ===========================================================
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+
+# ===========================================================
+# RECURSOS
+# ===========================================================
+Resources:
+
+  # ---------------------------------------------------------
+  # WEB TIER: S3 Buckets
+  # ---------------------------------------------------------
+
+  # Bucket del frontend (SPA React - acceso solo via CloudFront OAC)
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "mariposas-${Environment}-frontend-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: !Sub "mariposas-${Environment}-frontend"
+        - Key: Role
+          Value: static-website
+
+  # Politica del bucket: solo CloudFront (OAC) puede leer
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontOAC
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "${FrontendBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
+
+  # Bucket de imagenes de usuarios (privado - acceso via Presigned URL)
+  ImagesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "mariposas-${Environment}-images-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ["*"]
+            AllowedMethods: [GET, PUT, POST, HEAD]
+            AllowedOrigins: ["*"]
+            ExposedHeaders: [ETag]
+            MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          - Id: AbortIncompleteMultipartUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+      Tags:
+        - Key: Name
+          Value: !Sub "mariposas-${Environment}-images"
+        - Key: Role
+          Value: user-uploads
+
+  # Politica del bucket de imagenes: permite a CloudFront (OAC) leer las fotos
+  ImagesBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ImagesBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontOAC
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "${ImagesBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
+
+  # ---------------------------------------------------------
+  # WEB TIER: CloudFront Distribution + OAC
+  # ---------------------------------------------------------
+
+  OACFrontend:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "mariposas-${Environment}-frontend-oac"
+        Description: OAC para el bucket S3 del frontend
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  OACImages:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "mariposas-${Environment}-images-oac"
+        Description: OAC para el bucket S3 de imagenes de usuarios
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        IPV6Enabled: true
+        DefaultRootObject: index.html
+        Comment: !Sub "mariposas-${Environment} - Mariposas Bonaerenses"
+        PriceClass: PriceClass_100
+
+        Origins:
+          - Id: S3-frontend
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            OriginAccessControlId: !Ref OACFrontend
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+
+          - Id: S3-images
+            DomainName: !GetAtt ImagesBucket.RegionalDomainName
+            OriginAccessControlId: !Ref OACImages
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+
+        DefaultCacheBehavior:
+          TargetOriginId: S3-frontend
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          MinTTL: 0
+          DefaultTTL: 3600
+          MaxTTL: 86400
+
+        CacheBehaviors:
+          - PathPattern: "/uploads/*"
+            TargetOriginId: S3-images
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
+            MinTTL: 0
+            DefaultTTL: 86400
+            MaxTTL: 604800
+
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 0
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 0
+
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
+      Tags:
+        - Key: Name
+          Value: !Sub "mariposas-${Environment}-distribution"
+
+  # ---------------------------------------------------------
+  # APP TIER: Amazon Cognito
+  # ---------------------------------------------------------
+
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub "mariposas-${Environment}-users"
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireUppercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          TemporaryPasswordValidityDays: 7
+      EmailVerificationSubject: "Codigo de verificacion - Mariposas Bonaerenses"
+      EmailVerificationMessage: "Tu codigo de verificacion es: {####}"
+      Schema:
+        - Name: nombre
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+          StringAttributeConstraints:
+            MinLength: "1"
+            MaxLength: "100"
+      UserPoolTags:
+        Name: !Sub "mariposas-${Environment}-user-pool"
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub "mariposas-${Environment}-frontend-client"
+      UserPoolId: !Ref CognitoUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 30
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      PreventUserExistenceErrors: ENABLED
+
+  CognitoContributorsGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: contributors
+      UserPoolId: !Ref CognitoUserPool
+      Description: Usuarios que pueden subir avistamientos de mariposas
+      Precedence: 10
+
+  # ---------------------------------------------------------
+  # DATA TIER: DynamoDB
+  # ---------------------------------------------------------
+
+  MariposasDynamoTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "mariposas-${Environment}-mariposas"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: usuarioId
+          AttributeType: S
+        - AttributeName: ecorregion
+          AttributeType: S
+        - AttributeName: fechaSubida
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+        - AttributeName: usuarioId
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI-ecorregion
+          KeySchema:
+            - AttributeName: ecorregion
+              KeyType: HASH
+            - AttributeName: fechaSubida
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: GSI-usuario
+          KeySchema:
+            - AttributeName: usuarioId
+              KeyType: HASH
+            - AttributeName: fechaSubida
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: !If [IsProd, true, false]
+      Tags:
+        - Key: Name
+          Value: !Sub "mariposas-${Environment}-table"
+        - Key: Role
+          Value: main-data-store
+
+  # ---------------------------------------------------------
+  # APP TIER: IAM Role para Lambda
+  # ---------------------------------------------------------
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "mariposas-${Environment}-lambda-exec-role"
+      Description: Rol de ejecucion Lambda para Mariposas Bonaerenses
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                  - dynamodb:UpdateItem
+                Resource:
+                  - !GetAtt MariposasDynamoTable.Arn
+                  - !Sub "${MariposasDynamoTable.Arn}/index/*"
+        - PolicyName: S3ImagesAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                Resource: !Sub "${ImagesBucket.Arn}/uploads/*"
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt ImagesBucket.Arn
+      Tags:
+        - Key: Name
+          Value: !Sub "mariposas-${Environment}-lambda-role"
+
+  # ---------------------------------------------------------
+  # APP TIER: CloudWatch Log Groups
+  # ---------------------------------------------------------
+
+  LogGroupGetMariposas:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/mariposas-${Environment}-get-mariposas"
+      RetentionInDays: 1
+
+  LogGroupCreateMariposa:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/mariposas-${Environment}-create-mariposa"
+      RetentionInDays: 1
+
+  LogGroupDeleteMariposa:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/mariposas-${Environment}-delete-mariposa"
+      RetentionInDays: 1
+
+  LogGroupPresignedUrl:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/mariposas-${Environment}-presigned-url"
+      RetentionInDays: 1
+
+  LogGroupApiGateway:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/apigateway/mariposas-${Environment}"
+      RetentionInDays: 1
+
+  # ---------------------------------------------------------
+  # APP TIER: Lambda Functions
+  # ---------------------------------------------------------
+
+  LambdaGetMariposas:
+    Type: AWS::Lambda::Function
+    DependsOn: LogGroupGetMariposas
+    Properties:
+      FunctionName: !Sub "mariposas-${Environment}-get-mariposas"
+      Description: "GET /mariposas"
+      Runtime: python3.12
+      Handler: lambda_get_mariposas.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: !Ref LambdaTimeout
+      MemorySize: !Ref LambdaMemoryMB
+      Code:
+        S3Bucket: !Sub "mariposas-${Environment}-lambda-code-${AWS::AccountId}"
+        S3Key: lambda_get_mariposas.zip
+      Environment:
+        Variables:
+          DYNAMODB_TABLE: !Ref MariposasDynamoTable
+          S3_IMAGES_BUCKET: !Ref ImagesBucket
+          REGION: !Ref AWS::Region
+          PRESIGNED_URL_TTL: !Ref PresignedUrlTtl
+          CLOUDFRONT_URL: !Sub "https://${CloudFrontDistribution.DomainName}"
+      Tags:
+        - Key: Name
+          Value: !Sub "mariposas-${Environment}-get-mariposas"
+
+  LambdaCreateMariposa:
+    Type: AWS::Lambda::Function
+    DependsOn: LogGroupCreateMariposa
+    Properties:
+      FunctionName: !Sub "mariposas-${Environment}-create-mariposa"
+      Description: "POST /mariposas"
+      Runtime: python3.12
+      Handler: lambda_create_mariposa.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: !Ref LambdaTimeout
+      MemorySize: !Ref LambdaMemoryMB
+      Code:
+        S3Bucket: !Sub "mariposas-${Environment}-lambda-code-${AWS::AccountId}"
+        S3Key: lambda_create_mariposa.zip
+      Environment:
+        Variables:
+          DYNAMODB_TABLE: !Ref MariposasDynamoTable
+          S3_IMAGES_BUCKET: !Ref ImagesBucket
+          REGION: !Ref AWS::Region
+          PRESIGNED_URL_TTL: !Ref PresignedUrlTtl
+          CLOUDFRONT_URL: !Sub "https://${CloudFrontDistribution.DomainName}"
+      Tags:
+        - Key: Name
+          Value: !Sub "mariposas-${Environment}-create-mariposa"
+
+  LambdaDeleteMariposa:
+    Type: AWS::Lambda::Function
+    DependsOn: LogGroupDeleteMariposa
+    Properties:
+      FunctionName: !Sub "mariposas-${Environment}-delete-mariposa"
+      Description: "DELETE /mariposas/{id}"
+      Runtime: python3.12
+      Handler: lambda_delete_mariposa.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: !Ref LambdaTimeout
+      MemorySize: !Ref LambdaMemoryMB
+      Code:
+        S3Bucket: !Sub "mariposas-${Environment}-lambda-code-${AWS::AccountId}"
+        S3Key: lambda_delete_mariposa.zip
+      Environment:
+        Variables:
+          DYNAMODB_TABLE: !Ref MariposasDynamoTable
+          S3_IMAGES_BUCKET: !Ref ImagesBucket
+          REGION: !Ref AWS::Region
+          PRESIGNED_URL_TTL: !Ref PresignedUrlTtl
+          CLOUDFRONT_URL: !Sub "https://${CloudFrontDistribution.DomainName}"
+      Tags:
+        - Key: Name
+          Value: !Sub "mariposas-${Environment}-delete-mariposa"
+
+  LambdaPresignedUrl:
+    Type: AWS::Lambda::Function
+    DependsOn: LogGroupPresignedUrl
+    Properties:
+      FunctionName: !Sub "mariposas-${Environment}-presigned-url"
+      Description: "POST /mariposas/upload-url"
+      Runtime: python3.12
+      Handler: lambda_generate_presigned_url.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: !Ref LambdaTimeout
+      MemorySize: !Ref LambdaMemoryMB
+      Code:
+        S3Bucket: !Sub "mariposas-${Environment}-lambda-code-${AWS::AccountId}"
+        S3Key: lambda_generate_presigned_url.zip
+      Environment:
+        Variables:
+          DYNAMODB_TABLE: !Ref MariposasDynamoTable
+          S3_IMAGES_BUCKET: !Ref ImagesBucket
+          REGION: !Ref AWS::Region
+          PRESIGNED_URL_TTL: !Ref PresignedUrlTtl
+          CLOUDFRONT_URL: !Sub "https://${CloudFrontDistribution.DomainName}"
+      Tags:
+        - Key: Name
+          Value: !Sub "mariposas-${Environment}-presigned-url"
+
+  # ---------------------------------------------------------
+  # APP TIER: API Gateway REST API
+  # ---------------------------------------------------------
+
+  RestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub "mariposas-${Environment}-api"
+      Description: API REST para avistamientos de Mariposas Bonaerenses
+      EndpointConfiguration:
+        Types: [REGIONAL]
+      Tags:
+        - Key: Name
+          Value: !Sub "mariposas-${Environment}-api"
+
+  CognitoAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: cognito-authorizer
+      RestApiId: !Ref RestApi
+      Type: COGNITO_USER_POOLS
+      IdentitySource: method.request.header.Authorization
+      ProviderARNs:
+        - !GetAtt CognitoUserPool.Arn
+
+  ResourceMariposas:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref RestApi
+      ParentId: !GetAtt RestApi.RootResourceId
+      PathPart: mariposas
+
+  ResourceMariposaId:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref RestApi
+      ParentId: !Ref ResourceMariposas
+      PathPart: "{id}"
+
+  ResourceUploadUrl:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref RestApi
+      ParentId: !Ref ResourceMariposas
+      PathPart: upload-url
+
+  MethodGetMariposas:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ResourceMariposas
+      HttpMethod: GET
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaGetMariposas.Arn}/invocations"
+
+  MethodCreateMariposa:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ResourceMariposas
+      HttpMethod: POST
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaCreateMariposa.Arn}/invocations"
+
+  MethodOptionsMariposas:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ResourceMariposas
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: "200"
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: "{}"
+      MethodResponses:
+        - StatusCode: "200"
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  MethodDeleteMariposa:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ResourceMariposaId
+      HttpMethod: DELETE
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaDeleteMariposa.Arn}/invocations"
+
+  MethodOptionsMariposaId:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ResourceMariposaId
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: "200"
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+              method.response.header.Access-Control-Allow-Methods: "'DELETE,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: "{}"
+      MethodResponses:
+        - StatusCode: "200"
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  MethodPresignedUrl:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ResourceUploadUrl
+      HttpMethod: POST
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaPresignedUrl.Arn}/invocations"
+
+  MethodOptionsUploadUrl:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ResourceUploadUrl
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: "200"
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: "{}"
+      MethodResponses:
+        - StatusCode: "200"
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  PermissionApiGwGetMariposas:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaGetMariposas.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/*"
+
+  PermissionApiGwCreateMariposa:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaCreateMariposa.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/*"
+
+  PermissionApiGwDeleteMariposa:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaDeleteMariposa.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/*"
+
+  PermissionApiGwPresignedUrl:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaPresignedUrl.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/*"
+
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - MethodGetMariposas
+      - MethodCreateMariposa
+      - MethodOptionsMariposas
+      - MethodDeleteMariposa
+      - MethodOptionsMariposaId
+      - MethodPresignedUrl
+      - MethodOptionsUploadUrl
+    Properties:
+      RestApiId: !Ref RestApi
+
+  ApiStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId: !Ref RestApi
+      DeploymentId: !Ref ApiDeployment
+      StageName: !Ref Environment
+      AccessLogSetting:
+        DestinationArn: !GetAtt LogGroupApiGateway.Arn
+      Tags:
+        - Key: Name
+          Value: !Sub "mariposas-${Environment}-stage"
+
+# ===========================================================
+# OUTPUTS
+# ===========================================================
+Outputs:
+  CloudFrontURL:
+    Description: URL publica del sitio web (CloudFront)
+    Value: !Sub "https://${CloudFrontDistribution.DomainName}"
+    Export:
+      Name: !Sub "${AWS::StackName}-CloudFrontURL"
+
+  CloudFrontDistributionId:
+    Description: ID de la distribucion CloudFront (para invalidar cache)
+    Value: !Ref CloudFrontDistribution
+    Export:
+      Name: !Sub "${AWS::StackName}-CloudFrontDistributionId"
+
+  ApiGatewayURL:
+    Description: URL base de la REST API
+    Value: !Sub "https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiGatewayURL"
+
+  CognitoUserPoolId:
+    Description: ID del Cognito User Pool
+    Value: !Ref CognitoUserPool
+    Export:
+      Name: !Sub "${AWS::StackName}-CognitoUserPoolId"
+
+  CognitoClientId:
+    Description: ID del App Client de Cognito
+    Value: !Ref CognitoUserPoolClient
+    Export:
+      Name: !Sub "${AWS::StackName}-CognitoClientId"
+
+  FrontendBucketName:
+    Description: Nombre del bucket S3 del frontend
+    Value: !Ref FrontendBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-FrontendBucketName"
+
+  ImagesBucketName:
+    Description: Nombre del bucket S3 de imagenes
+    Value: !Ref ImagesBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-ImagesBucketName"
+
+  DynamoDBTableName:
+    Description: Nombre de la tabla DynamoDB
+    Value: !Ref MariposasDynamoTable
+    Export:
+      Name: !Sub "${AWS::StackName}-DynamoDBTableName"

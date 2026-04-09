@@ -3,12 +3,16 @@
 Sencillo Laboratorio CRUD Serverless que consta de APIRest para gestión de peliculas que interactuan con la base de datos NOSQL DynamoDB por medio de operaciones. El core de las APIs son funciones Lambda.
 El objetivo es crear una arquitectura moderna que se pueda utilizar en cualquier Caso de Uso de ABM y aprender a utilizar terraform y SAM.
 
-El deploy de los servicios se puede realizar de 3 maneras diferentes (se recomienda ejercitar todas).
+El deploy de los servicios se puede realizar de 4 maneras diferentes (se recomienda ejercitar todas).
 
 ## Estructura del Proyecto
 
 ```
 CRUD_Lambda-Dynamo-Apigateway/
+├── cloudformation/
+│   ├── cloudformation.yaml
+│   ├── deploy.ps1
+│   └── delete-cloudformation.ps1
 ├── sam/
 │   ├── samconfig.toml
 │   └── template.yaml
@@ -47,15 +51,18 @@ https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/s
 
 ## 🚀 Opciones de Deployment
 
-El deploy o creación de la infraestructura se puede realizar de 3 maneras diferentes planteados en este repo. Luego del deployment verificar en la consola y hacer las correspondientes pruebas (ver pdf y colección postman):
+El deploy o creación de la infraestructura se puede realizar de 4 maneras diferentes planteados en este repo. Luego del deployment verificar en la consola y hacer las correspondientes pruebas (ver pdf y colección postman):
 
 a- Por medio de la consola de AWS de manera manual. Siguiendo el paso a paso del documento en tutorial-recursos/LabCRUD-Dynamo-ApiGateway-Lambda.pdf
 
-b-Por medio de terraform siguiendo la sección Deployment Options --Opción 1: Terraform
+b- Por medio de Terraform, siguiendo la sección Opción 1: Terraform.
 (recomiendo ejecutar instrucción por instrucción)
 
-c-Por medio de SAM (AWS Serverless Application Model), siguiendo la sección Deployment Options --Opción 2: SAM
+c- Por medio de SAM (AWS Serverless Application Model), siguiendo la sección Opción 2: SAM.
 (recomiendo ejecutar instrucción por instrucción)
+
+d- Por medio de AWS CloudFormation, siguiendo la sección Opción 3: CloudFormation.
+(recomiendo ejecutar los scripts de powershell provistos)
 
 
 ### Opción 1: Terraform (posicionar en la carpeta terraform)
@@ -101,6 +108,17 @@ aws cloudformation delete-stack --stack-name aws-sam-cli-managed-default --regio
 aws s3 rb s3://aws-sam-cli-managed-default-samclisourcebucket-xxxxx --force
 
 Nota: Eliminar los log de monitoreo manualmente ingresarndo a la consola CloudWatch 👇
+
+### Opción 3: CloudFormation (posicionar en la carpeta cloudformation)
+1. ** Desplegar el stack **
+```powershell
+.\deploy.ps1
+```
+
+2. ** Eliminar el stack **
+```powershell
+.\delete-cloudformation.ps1
+```
 
 ## 📊 Monitoreo
 

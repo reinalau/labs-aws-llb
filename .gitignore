@@ -18,6 +18,9 @@
 */.env.development
 */.env.test
 */.env.production
+**/.env*
+**/dist/
+***/dist/  
 
 # ============================================================================
 # ARCHIVOS DE BUILD Y DESPLIEGUE
@@ -25,6 +28,7 @@
 
 # Lambda deployment package
 **/src/*.zip
+**/.lambda_packages/
 
 **/application/*.zip
 

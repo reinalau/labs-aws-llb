@@ -1,0 +1,31 @@
+# ============================================================
+# .gitignore — borrador_webAppServerless
+# ============================================================
+
+# Terraform state (contiene información sensible de recursos)
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/.lambda_packages/
+
+# Variables con valores reales (no commitear credenciales)
+terraform/*.tfvars
+!terraform/example.tfvars
+
+# Frontend
+frontend/app/node_modules/
+frontend/app/dist/
+
+# Variables de entorno del frontend
+frontend/app/.env.local
+frontend/app/.env.production
+
+# Python
+src/__pycache__/
+src/*.pyc
+
+*/.env*
+*/dist/
+**/.env*
+**/dist/

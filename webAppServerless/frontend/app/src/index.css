@@ -1,0 +1,190 @@
+@import '@fontsource/cormorant-garamond/400.css';
+@import '@fontsource/cormorant-garamond/500.css';
+@import '@fontsource/cormorant-garamond/600.css';
+@import '@fontsource/cormorant-garamond/700.css';
+@import '@fontsource/crimson-text/400.css';
+@import '@fontsource/crimson-text/600.css';
+@import '@fontsource/playfair-display/400.css';
+@import '@fontsource/playfair-display/700.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Jungle Theme Colors */
+    --jungle-deep: 145 60% 4%;
+    --jungle-primary: 145 55% 10%;
+    --jungle-secondary: 145 50% 18%;
+    --jungle-tertiary: 150 40% 30%;
+    --jungle-mist: 145 30% 40%;
+    
+    /* Gold Accent */
+    --gold-primary: 45 70% 47%;
+    --gold-light: 45 60% 60%;
+    --gold-dark: 45 80% 35%;
+    
+    /* Text Colors */
+    --text-ivory: 60 50% 95%;
+    --text-muted: 120 20% 65%;
+    
+    /* shadcn overrides */
+    --background: 145 55% 10%;
+    --foreground: 60 50% 95%;
+    --card: 145 50% 18%;
+    --card-foreground: 60 50% 95%;
+    --popover: 145 50% 18%;
+    --popover-foreground: 60 50% 95%;
+    --primary: 45 70% 47%;
+    --primary-foreground: 145 55% 10%;
+    --secondary: 145 40% 25%;
+    --secondary-foreground: 60 50% 95%;
+    --muted: 145 30% 25%;
+    --muted-foreground: 120 20% 65%;
+    --accent: 45 70% 47%;
+    --accent-foreground: 145 55% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 45 50% 30%;
+    --input: 145 40% 20%;
+    --ring: 45 70% 47%;
+    --radius: 0.25rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply bg-[#0D2818] text-[#F5F5DC] antialiased;
+    font-family: 'Crimson Text', serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Cormorant Garamond', serif;
+  }
+  
+  .font-display {
+    font-family: 'Playfair Display', serif;
+  }
+}
+
+@layer components {
+  .gold-gradient-text {
+    @apply bg-gradient-to-r from-[#C9A227] via-[#D4AF37] to-[#C9A227] bg-clip-text text-transparent;
+  }
+  
+  .gold-border {
+    @apply border border-[#C9A227]/50;
+  }
+  
+  .gold-glow {
+    box-shadow: 0 0 30px rgba(201, 162, 39, 0.3);
+  }
+  
+  .jungle-gradient {
+    background: linear-gradient(180deg, #0D2818 0%, #05140A 100%);
+  }
+  
+  .leaf-shadow {
+    filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.5));
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .animation-delay-200 {
+    animation-delay: 200ms;
+  }
+  
+  .animation-delay-400 {
+    animation-delay: 400ms;
+  }
+  
+  .animation-delay-600 {
+    animation-delay: 600ms;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0D2818;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1A4D2E;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2D6A4F;
+}
+
+/* Pulse Animation for Hotspots */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.pulse-ring {
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Floating Animation */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* Leaf Sway Animation */
+@keyframes sway {
+  0%, 100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+
+.animate-sway {
+  animation: sway 3s ease-in-out infinite;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

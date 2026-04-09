@@ -1,0 +1,512 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Movies API - CloudFormation Template for AWS Production Deployment
+
+# ============================================================
+# Parameters
+# ============================================================
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Deployment environment name
+
+# ============================================================
+# Resources
+# ============================================================
+Resources:
+
+  # ──────────────────────────────────────────────────────────
+  # IAM Role — shared by all Lambda functions
+  # ──────────────────────────────────────────────────────────
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub lambda-movies-role-${Environment}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: lambda-dynamodb-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                Resource: !GetAtt MoviesTable.Arn
+
+  # ──────────────────────────────────────────────────────────
+  # DynamoDB Table
+  # ──────────────────────────────────────────────────────────
+  MoviesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: movies
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: title
+          AttributeType: S
+      KeySchema:
+        - AttributeName: title
+          KeyType: HASH
+      Tags:
+        - Key: Name
+          Value: movies-table
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ──────────────────────────────────────────────────────────
+  # CloudWatch Log Groups (pre-created to control retention)
+  # ──────────────────────────────────────────────────────────
+  CreateMovieLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/create_movie
+      RetentionInDays: 1
+
+  GetMovieLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/get_movie
+      RetentionInDays: 1
+
+  UpdateMovieLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/update_movie
+      RetentionInDays: 1
+
+  DeleteMovieLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/delete_movie
+      RetentionInDays: 1
+
+  # ──────────────────────────────────────────────────────────
+  # Lambda Functions (inline code — src/ files embedded)
+  # ──────────────────────────────────────────────────────────
+  CreateMovieFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: CreateMovieLogGroup
+    Properties:
+      FunctionName: create_movie
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.12
+      Timeout: 30
+      MemorySize: 128
+      Handler: index.lambda_handler
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref MoviesTable
+      Code:
+        ZipFile: |
+          import boto3
+
+          dynamodb = boto3.resource('dynamodb')
+          table = dynamodb.Table('movies')
+
+          def lambda_handler(event, context):
+              year   = event['year']   if event.get('year')   else '0'
+              title  = event['title']  if event.get('title')  else ''
+              actors = event['actors'] if event.get('actors') else ''
+
+              response = table.put_item(
+                  Item={
+                      'year': year,
+                      'title': title,
+                      'info': {
+                          'actors': actors
+                      }
+                  }
+              )
+
+              return {
+                  'statusCode': 200,
+                  'headers': {'Content-Type': 'application/json'},
+                  'body': str(response)
+              }
+
+  GetMovieFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: GetMovieLogGroup
+    Properties:
+      FunctionName: get_movie
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.12
+      Timeout: 30
+      MemorySize: 128
+      Handler: index.lambda_handler
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref MoviesTable
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+
+          dynamodb = boto3.resource('dynamodb')
+          table = dynamodb.Table('movies')
+
+          def lambda_handler(event, context):
+              title = event['title']
+              response = table.get_item(Key={'title': title})
+              return {
+                  'statusCode': 200,
+                  'headers': {'Content-Type': 'application/json'},
+                  'body': json.dumps(response.get('Item', {}), default=str)
+              }
+
+  UpdateMovieFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: UpdateMovieLogGroup
+    Properties:
+      FunctionName: update_movie
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.12
+      Timeout: 30
+      MemorySize: 128
+      Handler: index.lambda_handler
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref MoviesTable
+      Code:
+        ZipFile: |
+          import boto3
+          from decimal import Decimal
+
+          dynamodb = boto3.resource('dynamodb')
+          table = dynamodb.Table('movies')
+
+          def lambda_handler(event, context):
+              title  = event['title']  if event.get('title')  else ''
+              rating = event['rating'] if event.get('rating') else '0.0'
+              plot   = event['plot']   if event.get('plot')   else ''
+
+              response = table.update_item(
+                  Key={'title': title},
+                  UpdateExpression='set info.rating=:r, info.plot=:p',
+                  ExpressionAttributeValues={
+                      ':r': Decimal(str(rating)),
+                      ':p': plot
+                  },
+                  ReturnValues='UPDATED_NEW'
+              )
+              return {
+                  'statusCode': 200,
+                  'headers': {'Content-Type': 'application/json'},
+                  'body': str(response)
+              }
+
+  DeleteMovieFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: DeleteMovieLogGroup
+    Properties:
+      FunctionName: delete_movie
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.12
+      Timeout: 30
+      MemorySize: 128
+      Handler: index.lambda_handler
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref MoviesTable
+      Code:
+        ZipFile: |
+          import boto3
+
+          dynamodb = boto3.resource('dynamodb')
+          table = dynamodb.Table('movies')
+
+          def lambda_handler(event, context):
+              title = event['title']
+              response = table.delete_item(
+                  Key={'title': title},
+                  ConditionExpression='attribute_exists(info.actors)',
+                  ReturnValues='ALL_OLD'
+              )
+              return {
+                  'statusCode': 200,
+                  'headers': {'Content-Type': 'application/json'},
+                  'body': str(response)
+              }
+
+  # ──────────────────────────────────────────────────────────
+  # API Gateway REST API
+  # ──────────────────────────────────────────────────────────
+  MoviesApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: Movies API
+      Description: Movies API — connects HTTP endpoints to Lambda functions
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  # /Movies
+  MoviesResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MoviesApi
+      ParentId: !GetAtt MoviesApi.RootResourceId
+      PathPart: Movies
+
+  # /Movies/{title}
+  MoviesTitleResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MoviesApi
+      ParentId: !Ref MoviesResource
+      PathPart: '{title}'
+
+  # ── POST /Movies → CreateMovieFunction ──
+  PostMoviesMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MoviesApi
+      ResourceId: !Ref MoviesResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateMovieFunction.Arn}/invocations
+        PassthroughBehavior: WHEN_NO_MATCH
+        IntegrationResponses:
+          - StatusCode: '200'
+            ResponseTemplates:
+              application/json: ''
+      MethodResponses:
+        - StatusCode: '200'
+          ResponseModels:
+            application/json: Empty
+
+  # ── PUT /Movies → UpdateMovieFunction ──
+  PutMoviesMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MoviesApi
+      ResourceId: !Ref MoviesResource
+      HttpMethod: PUT
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateMovieFunction.Arn}/invocations
+        PassthroughBehavior: WHEN_NO_MATCH
+        IntegrationResponses:
+          - StatusCode: '200'
+            ResponseTemplates:
+              application/json: ''
+      MethodResponses:
+        - StatusCode: '200'
+          ResponseModels:
+            application/json: Empty
+
+  # ── DELETE /Movies → DeleteMovieFunction ──
+  DeleteMoviesMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MoviesApi
+      ResourceId: !Ref MoviesResource
+      HttpMethod: DELETE
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteMovieFunction.Arn}/invocations
+        PassthroughBehavior: WHEN_NO_MATCH
+        IntegrationResponses:
+          - StatusCode: '200'
+            ResponseTemplates:
+              application/json: ''
+      MethodResponses:
+        - StatusCode: '200'
+          ResponseModels:
+            application/json: Empty
+
+  # ── OPTIONS /Movies (CORS preflight) ──
+  OptionsMoviesMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MoviesApi
+      ResourceId: !Ref MoviesResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: '200'
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'DELETE,GET,OPTIONS,POST,PUT'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: ''
+      MethodResponses:
+        - StatusCode: '200'
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  # ── GET /Movies/{title} → GetMovieFunction ──
+  GetMovieTitleMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MoviesApi
+      ResourceId: !Ref MoviesTitleResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      RequestParameters:
+        method.request.path.title: true
+      Integration:
+        Type: AWS
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetMovieFunction.Arn}/invocations
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: |
+            {
+              "title": "$input.params('title')"
+            }
+        IntegrationResponses:
+          - StatusCode: '200'
+            ResponseTemplates:
+              application/json: ''
+      MethodResponses:
+        - StatusCode: '200'
+          ResponseModels:
+            application/json: Empty
+
+  # ── OPTIONS /Movies/{title} (CORS preflight) ──
+  OptionsMoviesTitleMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MoviesApi
+      ResourceId: !Ref MoviesTitleResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      RequestParameters:
+        method.request.path.title: true
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: '200'
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'DELETE,GET,OPTIONS,POST,PUT'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: ''
+      MethodResponses:
+        - StatusCode: '200'
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  # ── Deployment (must depend on all methods) ──
+  MoviesApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - PostMoviesMethod
+      - PutMoviesMethod
+      - DeleteMoviesMethod
+      - OptionsMoviesMethod
+      - GetMovieTitleMethod
+      - OptionsMoviesTitleMethod
+    Properties:
+      RestApiId: !Ref MoviesApi
+
+  # ── Stage ──
+  MoviesApiStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId: !Ref MoviesApi
+      DeploymentId: !Ref MoviesApiDeployment
+      StageName: !Ref Environment
+      Description: !Sub Movies API - ${Environment} stage
+
+  # ──────────────────────────────────────────────────────────
+  # Lambda Permissions (allow API Gateway to invoke each fn)
+  # ──────────────────────────────────────────────────────────
+  CreateMoviePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CreateMovieFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MoviesApi}/*/*
+
+  GetMoviePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetMovieFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MoviesApi}/*/*
+
+  UpdateMoviePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref UpdateMovieFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MoviesApi}/*/*
+
+  DeleteMoviePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DeleteMovieFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MoviesApi}/*/*
+
+# ============================================================
+# Outputs
+# ============================================================
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub https://${MoviesApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/
+    Export:
+      Name: !Sub ${AWS::StackName}-ApiUrl
+
+  MoviesTableName:
+    Description: DynamoDB table name
+    Value: !Ref MoviesTable
+    Export:
+      Name: !Sub ${AWS::StackName}-TableName
+
+  CreateMovieFunctionArn:
+    Description: Create Movie Lambda Function ARN
+    Value: !GetAtt CreateMovieFunction.Arn
+
+  GetMovieFunctionArn:
+    Description: Get Movie Lambda Function ARN
+    Value: !GetAtt GetMovieFunction.Arn
+
+  UpdateMovieFunctionArn:
+    Description: Update Movie Lambda Function ARN
+    Value: !GetAtt UpdateMovieFunction.Arn
+
+  DeleteMovieFunctionArn:
+    Description: Delete Movie Lambda Function ARN
+    Value: !GetAtt DeleteMovieFunction.Arn

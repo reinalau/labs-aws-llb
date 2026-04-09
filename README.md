@@ -2,24 +2,22 @@
 
 ## Laboratorios AWS con Iac
 
-Este es un repo donde se van compartiendo diferentes casos de uso de aws con su correspondiente Infraestructura como codigo (IAC). 
-El objetivo es explorar las pequeñas arquitecturas estables, robustas y resilientes que nos ofrece AWS, comprendiendo como es el proceso de deployment.
+Este es un repo donde se comparten diferentes casos de uso de aws con su correspondiente Infraestructura como codigo (IaC). 
+El objetivo es explorar las pequeñas arquitecturas estables, robustas y resilientes que nos ofrece AWS, comprendiendo como es el proceso de deployment. Por supuesto todo es perfectible, se puede hacer de otra manera? claro que sí..te invito construir 😎.
 
 ## Proyectos - Laboratorios
 
-- [CRUD con Lambda + DynamoDB + API Gateway](https://github.com/reinalau/labs-aws-llb/tree/main/CRUD_Lambda-Dynamo-Apigateway)
-
-- [Arquitectura Alta Disponibilidad con ALB + Auto Scaling + EC2 + RDS (CloudFormation + Terraform)](https://github.com/reinalau/labs-aws-llb/tree/main/HA_ALB-AS-EC2-RDS)
-
-- [Arquitectura Alta Disponibilidad con ALB + ECS Fargate + RDS (CloudFormation + Terraform)](https://github.com/reinalau/labs-aws-llb/tree/main/HA_ALB-FARGATE-RDS)
-
-- [Arquitectura Alta Disponibilidad con ALB + EKS Fargate + RDS (CloudFormation(Nuevo!!) + Terraform)](https://github.com/reinalau/labs-aws-llb/tree/main/HA_ALB-EKS-RDS)
-
-- [DataLake Glue-S3 (CloudFormation)](https://github.com/reinalau/labs-aws-llb/tree/main/serverless-aws-datalake-1)
-
+| Proyecto | Actualización |
+| :--- | :--- |
+| [CRUD con Lambda + DynamoDB + API Gateway](https://github.com/reinalau/labs-aws-llb/tree/main/CRUD_Lambda-Dynamo-Apigateway) | 07/04/2026 |
+| [Arquitectura Alta Disponibilidad con ALB + Auto Scaling + EC2 + RDS (CloudFormation + Terraform)](https://github.com/reinalau/labs-aws-llb/tree/main/HA_ALB-AS-EC2-RDS) | - |
+| [Arquitectura Alta Disponibilidad con ALB + ECS Fargate + RDS (CloudFormation + Terraform)](https://github.com/reinalau/labs-aws-llb/tree/main/HA_ALB-FARGATE-RDS) | - |
+| [Arquitectura Alta Disponibilidad con ALB + EKS Fargate + RDS (CloudFormation + Terraform)](https://github.com/reinalau/labs-aws-llb/tree/main/HA_ALB-EKS-RDS) | - |
+| [DataLake Glue-S3 (CloudFormation)](https://github.com/reinalau/labs-aws-llb/tree/main/serverless-aws-datalake-1) | - |
+| [Web App Serverless (CloudFormation + Terraform)](https://github.com/reinalau/labs-aws-llb/tree/main/webAppServerless) | 09/04/2026 |
 
 ## 🧹 Limpieza de ambiente AWS
-Recordar que todos los laboratorios pueden llegar a tener un costo minimo en la consola. La idea es analizar la IAC--> impactar --> analzar la infraestructura creada en aws e inmediatamente despues de testear: destruir. 
+Recordar que todos los laboratorios pueden llegar a tener un costo minimo en la consola. La idea es analizar la IAC--> impactar --> analzar la infraestructura creada en aws e inmediatamente despues de testear: **destruir**. 
 Para evitar sorpresas seguir las indicaciones de delete/destroy o eliminación manual de recursos via la consola de aws.
 
 
