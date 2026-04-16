@@ -1,6 +1,6 @@
 # Laboratorio Worker Fleet (SQS + ASG)
 
-Este laboratorio tiene como fin aprender el patrón de arquitectura **Worker Fleet** en AWS, donde una flota de instancias EC2 consume mensajes de una cola SQS de forma autónoma, y el grupo de autoescalado ajusta dinámicamente la cantidad de instancias en función de la **profundidad de esa queue.**
+Este laboratorio tiene como fin aprender el patrón de arquitectura **Worker Fleet** en AWS, donde una flota de instancias EC2 consume mensajes de una cola SQS de forma autónoma, y el grupo de autoescalado ajusta dinámicamente la cantidad de instancias en función de la **profundidad de la queue.**
 
 Al finalizar el laboratorio tendrás conocimientos en:
 
