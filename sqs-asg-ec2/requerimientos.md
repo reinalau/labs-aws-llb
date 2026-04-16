@@ -1,4 +1,4 @@
-# Laboratorio AWS Educativo
+# Requerimientos Worker Fleet
 ## Escalado Automático Basado en Profundidad de Cola SQS
 
 > **Documento de Requerimientos Funcionales**

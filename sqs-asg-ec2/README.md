@@ -1,4 +1,4 @@
-# Laboratorio: Worker Fleet (SQS + ASG)
+# Laboratorio Worker Fleet (SQS + ASG)
 
 Este laboratorio tiene como fin aprender el patrón de arquitectura **Worker Fleet** en AWS, donde una flota de instancias EC2 consume mensajes de una cola SQS de forma autónoma, y el grupo de autoescalado ajusta dinámicamente la cantidad de instancias en función de la **profundidad de esa queue.**
 
@@ -11,9 +11,9 @@ Al finalizar el laboratorio tendrás conocimientos en:
 - Verificar el comportamiento del sistema enviando carga a la cola y observando el escalado.
 - Validar el Health Check de las instancias EC2 dentro del ASG.
 
-Nota1: Este laboratorio puede formar parte del entrenamiento para los examenes de certificación AWS: SAA-C03 y CLF-C02.
+**Nota 1**: Este laboratorio puede formar parte del entrenamiento para los examenes de certificación AWS: SAA-C03 y CLF-C02.
 
-Nota2: Para mantener el laboratorio simple, rápido y evitar gastos o límites de cuotas de red, se utiliza un data block en Terraform (y lo equivalente en CloudFormation) que busca automáticamente tu VPC por defecto de la región junto con todas sus subredes, y despliega las instancias allí adentro (no se crea una nueva VPC)
+**Nota 2**: Para mantener el laboratorio simple, rápido y evitar gastos o límites de cuotas de red, se utiliza un data block en Terraform (y lo equivalente en CloudFormation) que busca automáticamente tu VPC por defecto de la región junto con todas sus subredes, y despliega las instancias allí adentro (no se crea una nueva VPC)
 
 ---
 
@@ -28,7 +28,7 @@ Nota2: Para mantener el laboratorio simple, rápido y evitar gastos o límites d
 ```text
 sqs-asg-ec2/
 ├── README.md                  ← Guía paso a paso principal
-├── requerimientos.md          ← Este documento (Arquitectura y métricas)
+├── requerimientos.md          ← Este documento se utilizo para crear el lab
 ├── cloudformation/
 │   └── template.yaml          ← Plantilla IaC nativa de AWS
 ├── terraform/                 ← Código IaC modular de HashiCorp
@@ -134,7 +134,9 @@ echo "SQS Queue URL: $QUEUE_URL"
 ### Controlar visualmente la infraestructura desplegada en consola de aws (OPCIONAL).
 
 1. **SQS**
+
 ![SQS](resources/sqs_deploy.JPG)
+
 Un mensaje va a la Dead Letter Queue (DLQ) solo si falla al ser procesado varias veces, no por estar mucho tiempo esperando en la cola.
 El despligue esta confifigurado para un maxReceiveCount: 3 y un Visibility Timeout. Funciona así:
 -Un worker recibe el mensaje (Intento 1). Si el worker se cuelga o lanza un error y no borra el mensaje, este se vuelve visible nuevamente tras 30 segundos.
@@ -143,18 +145,23 @@ El despligue esta confifigurado para un maxReceiveCount: 3 y un Visibility Timeo
 -Como ya alcanzó el máximo de 3 recepciones fallidas, SQS lo saca de la cola principal y lo mueve a la DLQ.
 
 2. **Auto Scaling Group**
+
 ![ASG](resources/asg_deploy.JPG)
 
 3. **Worker**
+
 ![Worker](resources/worker_deploy.JPG)
 
 Podes revisar en **EC2/Launch Templates** el script que se inyecta en el user data y que permite que el worker se registre en el ASG.
 
 4. **Rol IAM**
+
 ![Rol IAM](resources/rol_deploy.JPG)
 
 5. **CloudWatch Alarms**
+
 ![CloudWatch Alarms](resources/alarm_cloudwatch_deploy.JPG)
+
 La alarma disparada inmediatemente despues del despliegue es la QueueDepthAlarmLow. Esta alarma está configurada para entrar en estado In alarm cuando la cantidad de mensajes en la cola es menor o igual a 1 (<= 1).
 La cola SQS está completamente vacía (0 mensajes), la condición se cumple inmediatamente. Esto es necesario porque le indica constantemente al Auto Scaling Group: "No hay trabajo, mantén las instancias al mínimo". Como el grupo ya está en su capacidad mínima (1), simplemente se queda en reposo sin hacer cambios.
 La alarma verde (QueueDepthAlarmHigh) es la que vigila si hay tráfico alto (>= 10). Esta es la que se va poner roja en el simulacro del Paso 3 cuando inyectes carga.
