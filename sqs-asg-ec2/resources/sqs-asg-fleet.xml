@@ -1,0 +1,62 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="aws-worker-fleet" name="AWS Worker Fleet Scaling">
+    <mxGraphModel dx="1091" dy="507" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="load_gen" parent="1" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws3.users;fillColor=#D2D3D3;gradientColor=none;" value="Load Generate" vertex="1">
+          <mxGeometry height="63" width="60" x="40" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="sqs_queue" parent="1" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws3.sqs;fillColor=#F58534;gradientColor=none;" value="Amazon SQS&lt;br&gt;(Messages QUEUE)" vertex="1">
+          <mxGeometry height="76.5" width="76.5" x="130" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="cw_alarm" parent="1" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws3.cloudwatch;fillColor=#759C3E;gradientColor=none;" value="CloudWatch Alarm&#xa;(ApproximateNumberOfMessagesVisible)" vertex="1">
+          <mxGeometry height="76.5" width="76.5" x="370" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="asg_policy" parent="1" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws3.auto_scaling;fillColor=#F58534;gradientColor=none;" value="ASG Scaling Policy&#xa;(Step Scaling / Target Tracking)" vertex="1">
+          <mxGeometry height="76.5" width="76.5" x="500" y="193" as="geometry" />
+        </mxCell>
+        <mxCell id="asg_group" parent="1" style="swimlane;whiteSpace=wrap;html=1;dashed=1;dashPattern=1 4;fillColor=none;strokeColor=#F58534;fontColor=#F58534;strokeWidth=2;" value="ASG: Flota EC2 (Workers)" vertex="1">
+          <mxGeometry height="270" width="220" x="650" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ec2_1" parent="asg_group" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws3.ec2;fillColor=#F58534;gradientColor=none;" value="EC2 Worker" vertex="1">
+          <mxGeometry height="63" width="60" x="30" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ec2_2" parent="asg_group" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws3.ec2;fillColor=#F58534;gradientColor=none;" value="EC2 Worker" vertex="1">
+          <mxGeometry height="63" width="60" x="130" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="WyZC8xFmrq2JVEJkWlG8-2" parent="asg_group" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws3.ec2;fillColor=#F58534;gradientColor=none;" value="EC2 Worker" vertex="1">
+          <mxGeometry height="63" width="60" x="90" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="WyZC8xFmrq2JVEJkWlG8-5" parent="asg_group" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;font style=&quot;font-size: 13px; color: rgb(255, 128, 0);&quot;&gt;&lt;b&gt;....&lt;/b&gt;&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="60" x="150" y="176.5" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" edge="1" parent="1" source="load_gen" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" target="sqs_queue" value="Envía mensajes">
+          <mxGeometry relative="1" x="-0.1622" y="-9" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge2" edge="1" parent="1" source="sqs_queue" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;" target="cw_alarm" value="Metric: QueueDepth">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" edge="1" parent="1" source="cw_alarm" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" target="asg_policy" value="shoots">
+          <mxGeometry relative="1" x="0.0537" y="12" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge4" edge="1" parent="1" source="asg_policy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" target="asg_group" value="scaling">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge5" edge="1" parent="1" source="ec2_1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;entryX=0.5;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="sqs_queue" value="Pull / Process">
+          <mxGeometry relative="1" x="-0.1" y="-20" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="710" y="360" />
+              <mxPoint x="218" y="360" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

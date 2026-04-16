@@ -274,7 +274,7 @@ aws cognito-idp admin-create-user \
 aws cognito-idp admin-set-user-password \
   --user-pool-id TU_USER_POOL_ID \
   --username reinalau@email.com \
-  --password "Mariposas!2027!" \
+  --password "Mariposas2027!" \
   --permanent
 ```
 > Reemplazar `TU_USER_POOL_ID` con el valor del output `cognito_user_pool_id`.

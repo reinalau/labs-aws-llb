@@ -15,6 +15,7 @@ El objetivo es explorar las pequeñas arquitecturas estables, robustas y resilie
 | [Arquitectura Alta Disponibilidad con ALB + EKS Fargate + RDS (CloudFormation + Terraform)](https://github.com/reinalau/labs-aws-llb/tree/main/HA_ALB-EKS-RDS) | - |
 | [DataLake Glue-S3 (CloudFormation)](https://github.com/reinalau/labs-aws-llb/tree/main/serverless-aws-datalake-1) | - |
 | [Web App Serverless (CloudFormation + Terraform)](https://github.com/reinalau/labs-aws-llb/tree/main/webAppServerless) | 09/04/2026 |
+| [Arquitectura Asíncrona Worker Fleet con SQS + Auto Scaling + EC2 (CloudFormation + Terraform)](https://github.com/reinalau/labs-aws-llb/tree/main/sqs-asg-ec2) | 16/04/2026 |
 
 ## 🧹 Limpieza de ambiente AWS
 Recordar que todos los laboratorios pueden llegar a tener un costo minimo en la consola. La idea es analizar la IAC--> impactar --> analzar la infraestructura creada en aws e inmediatamente despues de testear: **destruir**. 

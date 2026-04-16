@@ -1,0 +1,225 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: SQS Worker Fleet Auto Scaling Lab
+
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    AllowedValues: [t2.micro, t3.micro]
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64'
+
+Resources:
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+
+  WorkerQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 30
+      MessageRetentionPeriod: 14400
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DeadLetterQueue.Arn
+        maxReceiveCount: 3
+
+  WorkerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WorkerSQSPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                  - sqs:GetQueueUrl
+                Resource: !GetAtt WorkerQueue.Arn
+        - PolicyName: LogsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  WorkerInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref WorkerRole
+
+  WorkerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SG para los workers de SQS (Solo trafico saliente)
+
+  WorkerLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        InstanceType: !Ref InstanceType
+        ImageId: !Ref LatestAmiId
+        IamInstanceProfile:
+          Arn: !GetAtt WorkerInstanceProfile.Arn
+        SecurityGroupIds:
+          - !GetAtt WorkerSecurityGroup.GroupId
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            yum update -y
+            yum install -y python3 python3-pip
+            su - ec2-user -c "pip3 install boto3 --user"
+
+            cat << 'EOF' > /home/ec2-user/worker.py
+            import boto3
+            import time
+            import os
+
+            QUEUE_URL = os.environ.get('QUEUE_URL')
+            REGION = os.environ.get('REGION', 'us-east-1')
+
+            sqs = boto3.client('sqs', region_name=REGION)
+
+            def poll_queue():
+                print(f"Starting worker for queue: {QUEUE_URL}", flush=True)
+                while True:
+                    try:
+                        response = sqs.receive_message(
+                            QueueUrl=QUEUE_URL,
+                            MaxNumberOfMessages=10,
+                            WaitTimeSeconds=20
+                        )
+                        
+                        messages = response.get('Messages', [])
+                        for message in messages:
+                            print(f"Processing message {message['MessageId']}", flush=True)
+                            time.sleep(3) # Simulación de trabajo
+                            
+                            sqs.delete_message(
+                                QueueUrl=QUEUE_URL,
+                                ReceiptHandle=message['ReceiptHandle']
+                            )
+                    except Exception as e:
+                        print(f"Error: {e}", flush=True)
+                        time.sleep(5)
+
+            if __name__ == '__main__':
+                poll_queue()
+            EOF
+            
+            chown ec2-user:ec2-user /home/ec2-user/worker.py
+
+            cat << 'EOF' > /etc/systemd/system/worker.service
+            [Unit]
+            Description=SQS Worker Process
+            After=network.target
+
+            [Service]
+            Environment=QUEUE_URL=${WorkerQueue}
+            Environment=REGION=${AWS::Region}
+            ExecStart=/usr/bin/python3 /home/ec2-user/worker.py
+            Restart=always
+            User=ec2-user
+
+            [Install]
+            WantedBy=multi-user.target
+            EOF
+
+            systemctl daemon-reload
+            systemctl enable worker
+            systemctl start worker
+
+  WorkerASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      MinSize: '1'
+      MaxSize: '4'
+      DesiredCapacity: '1'
+      HealthCheckType: EC2
+      HealthCheckGracePeriod: 120
+      AvailabilityZones: !GetAZs ''
+      LaunchTemplate:
+        LaunchTemplateId: !Ref WorkerLaunchTemplate
+        Version: !GetAtt WorkerLaunchTemplate.LatestVersionNumber
+      Tags:
+        - Key: Name
+          Value: sqs-worker-instance
+          PropagateAtLaunch: true
+
+  ScaleOutPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref WorkerASG
+      PolicyType: StepScaling
+      AdjustmentType: ChangeInCapacity
+      StepAdjustments:
+        - MetricIntervalLowerBound: 0
+          ScalingAdjustment: 1
+
+  ScaleInPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref WorkerASG
+      PolicyType: StepScaling
+      AdjustmentType: ChangeInCapacity
+      StepAdjustments:
+        - MetricIntervalUpperBound: 0
+          ScalingAdjustment: -1
+
+  QueueDepthAlarmHigh:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: "Scale out if queue depth >= 10"
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt WorkerQueue.QueueName
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 10
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref ScaleOutPolicy
+
+  QueueDepthAlarmLow:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: "Scale in if queue depth <= 1"
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt WorkerQueue.QueueName
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 1
+      ComparisonOperator: LessThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref ScaleInPolicy
+
+Outputs:
+  QueueUrl:
+    Description: URL of the SQS Queue
+    Value: !Ref WorkerQueue
+  AutoScalingGroupName:
+    Description: Name of the Auto Scaling Group
+    Value: !Ref WorkerASG
