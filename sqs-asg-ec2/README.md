@@ -62,6 +62,12 @@ sqs-asg-ec2/
 
 ---
 
+## 💰 Costo Estimado
+
+Al usar instancias `t3.micro` y asumiendo que eliminas todo al dar por terminada la sesión (1 a 2 horas de práctica), el costo estimado de este laboratorio es **menor a $0.10 USD**. Para las colas y las alarmas, los servicios de SQS y CloudWatch utilizados entran holgadamente dentro de la Capa Gratuita (Free Tier) de AWS.
+
+---
+
 ## 🚀 Despliegue de Infraestructura (Podes hacerlo por CloudFormation o Terraform, recuerda limpiar el despliegue anterior antes de cambiar de método)
 
 ### CloudFormation
@@ -259,6 +265,16 @@ cd sqs-asg-ec2/terraform
 terraform destroy -auto-approve
 ```
 Espera unos minutos y verificar en la consola que el stack ha sido completamente terminado. 
+
+## 🎯 Posibles casos de Uso reales:
+
+- **Procesamiento de medios**: Cuando subís un video a YouTube o una foto a Instagram, un mensaje entra a una cola y una flota de workers lo transcodifica, redimensiona o aplica filtros en paralelo. El volumen es impredecible, por eso necesita escalar.
+- **E-commerce y pagos**: En un Black Friday, los pedidos no se procesan sincrónicamente. Van a una cola y una flota los procesa: validación de stock, cobro, generación de factura, notificación. Si el volumen explota, el ASG lanza más workers.
+- **Envío masivo de emails/notificaciones**: Plataformas como Mailchimp o cualquier sistema de marketing que manda millones de emails en batch. Cada mensaje en la cola representa un email a enviar. Los workers consumen y envían sin saturar el servicio de correo.
+- **ETL y procesamiento de datos**: Pipelines de datos donde cada mensaje representa un archivo a procesar, transformar y cargar en un data warehouse. Muy común en fintech para procesar transacciones o conciliaciones bancarias al cierre del día.
+- **Indexación de búsqueda**: Cuando actualizás un producto en un ecommerce, un mensaje va a la cola y un worker actualiza el índice de Elasticsearch o OpenSearch. Desacopla la escritura en base de datos del proceso de indexación.
+- **Procesamiento de imágenes médicas o satelitales**: Análisis de radiografías, tomografías o imágenes de satélite donde cada imagen es un mensaje. El procesamiento es costoso en CPU y completamente paralelizable.
+- **Web scraping / crawling a escala**: Cada URL a scrapear es un mensaje. Los workers consumen, hacen el request, parsean y guardan. Si la cola crece (muchas URLs nuevas), el ASG escala.
 
 ## 📄 Licencia
 
